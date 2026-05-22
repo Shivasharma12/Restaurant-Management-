@@ -30,19 +30,28 @@ app.use(
 
 // ── CORS ─────────────────────────────────────────────────────
 const allowedOrigins = [
-  process.env.CLIENT_URL ?? 'http://localhost:3000',
+  process.env.CLIENT_URL?.replace(/\/$/, ''),
   'http://localhost:3000',
   'http://localhost:3001',
-].filter(Boolean);
+].filter(Boolean) as string[];
 
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (curl, mobile apps, Postman)
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
+      
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      
+      if (
+        allowedOrigins.includes(normalizedOrigin) ||
+        normalizedOrigin.endsWith('.up.railway.app') ||
+        process.env.NODE_ENV !== 'production'
+      ) {
         return callback(null, true);
       }
+      
+      console.warn(`[CORS Blocked] Origin: ${origin}. Allowed:`, allowedOrigins);
       callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
