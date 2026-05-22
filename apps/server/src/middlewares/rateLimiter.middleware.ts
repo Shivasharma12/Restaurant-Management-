@@ -71,7 +71,7 @@ class FallbackStore implements Store {
   async resetAll() {
     if (this.isRedisReady) {
       try {
-        return await this.redisStore.resetAll?.();
+        return await (this.redisStore as any).resetAll?.();
       } catch {
         // Fall through
       }
@@ -80,7 +80,7 @@ class FallbackStore implements Store {
   }
 
   async shutdown() {
-    if (this.redisStore.shutdown) await this.redisStore.shutdown();
+    if ((this.redisStore as any).shutdown) await (this.redisStore as any).shutdown();
     this.memoryStore.shutdown();
   }
 }
