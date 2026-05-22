@@ -1,0 +1,74 @@
+import { z } from 'zod';
+
+export const guestCheckoutSchema = z.object({
+  guestName: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  guestPhone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
+  tableNumber: z.string().optional(),
+  paymentMethod: z.enum(['RAZORPAY', 'COD']),
+  couponCode: z.string().optional(),
+  restaurantSlug: z.string().min(1, 'Restaurant slug is required'),
+  cartItems: z.array(
+    z.object({
+      menuItemId: z.string().cuid(),
+      variantId: z.string().cuid().optional().nullable(),
+      quantity: z.number().int().positive(),
+      addOns: z.array(
+        z.object({
+          id: z.string().cuid(),
+          name: z.string(),
+          price: z.number().min(0),
+        })
+      ).default([]),
+    })
+  ).min(1, 'Cart cannot be empty'),
+});
+
+export const userCheckoutSchema = z.object({
+  addressId: z.string().cuid('Invalid address ID').optional(),
+  newAddress: z
+    .object({
+      label: z.string().min(1).max(50),
+      flat: z.string().min(1),
+      street: z.string().min(1),
+      area: z.string().min(1),
+      city: z.string().min(1),
+      pincode: z.string().regex(/^\d{6}$/),
+      isDefault: z.boolean().default(false),
+    })
+    .optional(),
+  tableNumber: z.string().optional(),
+  paymentMethod: z.enum(['RAZORPAY', 'COD', 'WALLET']),
+  couponCode: z.string().optional(),
+  restaurantSlug: z.string().min(1),
+  useWallet: z.boolean().default(false),
+});
+
+export const updateOrderStatusSchema = z.object({
+  status: z.enum([
+    'CONFIRMED',
+    'PREPARING',
+    'BAKING',
+    'READY',
+    'ON_THE_WAY',
+    'DELIVERED',
+    'CANCELLED',
+  ]),
+  reason: z.string().max(500).optional(),
+});
+
+export const razorpayVerifySchema = z.object({
+  orderId: z.string().min(1),
+  razorpayOrderId: z.string().min(1),
+  razorpayPaymentId: z.string().min(1),
+  razorpaySignature: z.string().min(1),
+});
+
+export const walletTopUpSchema = z.object({
+  amount: z.number().positive('Amount must be positive').min(10).max(10000),
+});
+
+export type GuestCheckoutInput = z.infer<typeof guestCheckoutSchema>;
+export type UserCheckoutInput = z.infer<typeof userCheckoutSchema>;
+export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
+export type RazorpayVerifyInput = z.infer<typeof razorpayVerifySchema>;
+export type WalletTopUpInput = z.infer<typeof walletTopUpSchema>;

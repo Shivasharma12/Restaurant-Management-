@@ -1,0 +1,286 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ShoppingBag, Minus, Plus, Trash2, Tag, ChevronRight, Sparkles } from 'lucide-react';
+import { useCartStore } from '@/store/cart.store';
+import { useAuthStore } from '@/store/auth.store';
+import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
+import { toast } from 'sonner';
+import { useQuery } from '@tanstack/react-query';
+
+const GST_RATE = 0.18;
+const DELIVERY_FEE = 40;
+const PACKAGING_FEE = 15;
+
+interface CartDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  restaurantSlug: string;
+  tableNumber?: string;
+  themeColor: string;
+}
+
+export function CartDrawer({ open, onClose, restaurantSlug, tableNumber, themeColor }: CartDrawerProps) {
+  const { items, updateQuantity, removeItem, couponCode, couponDiscount, applyCoupon, removeCoupon, subtotal, gstAmount, total } = useCartStore();
+  const { user } = useAuthStore();
+  const router = useRouter();
+
+  const [couponInput, setCouponInput] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const subtotalAmount = subtotal();
+  const gst = gstAmount();
+  const discount = couponDiscount;
+  const grandTotal = total();
+
+  // AI Coupon Suggestion
+  const { data: couponSuggestion } = useQuery({
+    queryKey: ['coupon-suggestion', restaurantSlug, subtotalAmount],
+    queryFn: async () => {
+      if (items.length === 0) return null;
+      const response = await api.post('/ai/coupon-suggest', {
+        restaurantSlug,
+        cartItems: items.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: item.unitPrice,
+        })),
+        cartTotal: subtotalAmount,
+      });
+      return response.data.data as {
+        couponCode: string | null;
+        reason: string;
+        savingsAmount: number;
+      };
+    },
+    enabled: open && items.length > 0,
+    staleTime: 60 * 1000,
+  });
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    setCouponLoading(true);
+    try {
+      const response = await api.post('/cart/coupon', {
+        code: couponInput,
+        restaurantSlug,
+        cartTotal: subtotalAmount,
+      });
+      const { discount: discountAmount, coupon } = response.data.data as {
+        discount: number;
+        coupon: { code: string };
+      };
+      applyCoupon(coupon.code, discountAmount);
+      setCouponInput('');
+      toast.success(`Coupon applied! You save ₹${discountAmount}`);
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { error?: string } } };
+      toast.error(axiosError.response?.data?.error ?? 'Invalid coupon code');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleCheckout = () => {
+    onClose();
+    const params = new URLSearchParams();
+    if (tableNumber) params.set('table', tableNumber);
+    router.push(`/r/${restaurantSlug}/checkout?${params.toString()}`);
+  };
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            onClick={onClose}
+          />
+
+          {/* Drawer */}
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-background shadow-2xl z-50 flex flex-col"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <ShoppingBag className="w-5 h-5" />
+                <h2 className="font-display font-bold text-lg">Your Cart</h2>
+                <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5 rounded-full">
+                  {items.reduce((sum, i) => sum + i.quantity, 0)}
+                </span>
+              </div>
+              <button onClick={onClose} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Items */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+              {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center py-16">
+                  <ShoppingBag className="w-16 h-16 text-muted-foreground/30 mb-4" />
+                  <h3 className="font-display font-semibold text-lg mb-2">Your cart is empty</h3>
+                  <p className="text-muted-foreground text-sm">Add items from the menu to get started</p>
+                </div>
+              ) : (
+                <>
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 bg-muted/30 rounded-xl p-3">
+                      <div className={`w-3 h-3 flex-shrink-0 rounded border-2 ${item.isVeg ? 'border-green-500' : 'border-red-500'}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full m-0.5 ${item.isVeg ? 'bg-green-500' : 'bg-red-500'}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm line-clamp-1">{item.name}</p>
+                        {item.variantName && (
+                          <p className="text-xs text-muted-foreground">{item.variantName}</p>
+                        )}
+                        {item.addOns.length > 0 && (
+                          <p className="text-xs text-muted-foreground">{item.addOns.map((ao) => ao.name).join(', ')}</p>
+                        )}
+                        <p className="text-sm font-bold mt-0.5">₹{((item.unitPrice + item.addOns.reduce((s, ao) => s + ao.price, 0)) * item.quantity).toFixed(0)}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 rounded-lg border border-border">
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            className="p-1.5 hover:bg-muted rounded-l-lg transition-colors"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
+                          <button
+                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            className="p-1.5 hover:bg-muted rounded-r-lg transition-colors"
+                            style={{ color: themeColor }}
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Coupon + Bill Summary */}
+            {items.length > 0 && (
+              <div className="border-t border-border p-4 space-y-4">
+                {/* AI Coupon Suggestion */}
+                {couponSuggestion?.couponCode && !couponCode && (
+                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">AI Suggestion</span>
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-300 mb-2">{couponSuggestion.reason}</p>
+                    <button
+                      onClick={() => setCouponInput(couponSuggestion.couponCode!)}
+                      className="text-xs font-bold text-amber-700 dark:text-amber-400 underline"
+                    >
+                      Apply {couponSuggestion.couponCode}
+                    </button>
+                  </div>
+                )}
+
+                {/* Coupon Input */}
+                {couponCode ? (
+                  <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-3 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-green-600" />
+                      <div>
+                        <p className="text-sm font-semibold text-green-700 dark:text-green-400">{couponCode}</p>
+                        <p className="text-xs text-green-600">Saving ₹{discount.toFixed(0)}</p>
+                      </div>
+                    </div>
+                    <button onClick={removeCoupon} className="text-muted-foreground hover:text-red-500">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter coupon code"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleApplyCoupon(); }}
+                      className="flex-1 px-3 py-2.5 bg-muted rounded-xl text-sm border-0 focus:outline-none focus:ring-2 focus:ring-primary/20 uppercase"
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponInput.trim()}
+                      className="px-4 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-50"
+                      style={{ backgroundColor: themeColor }}
+                    >
+                      {couponLoading ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Bill Summary */}
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>₹{subtotalAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">GST (18%)</span>
+                    <span>₹{gst.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Delivery fee</span>
+                    <span>₹{DELIVERY_FEE}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Packaging</span>
+                    <span>₹{PACKAGING_FEE}</span>
+                  </div>
+                  {discount > 0 && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Coupon discount</span>
+                      <span>-₹{discount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="border-t border-border pt-2 flex justify-between font-bold text-base">
+                    <span>Total</span>
+                    <span>₹{grandTotal.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleCheckout}
+                  className="w-full py-4 rounded-2xl text-white font-bold text-base flex items-center justify-between px-5"
+                  style={{ background: `linear-gradient(135deg, ${themeColor}, #F48C06)` }}
+                >
+                  <span>Proceed to Checkout</span>
+                  <div className="flex items-center gap-2">
+                    <span>₹{grandTotal.toFixed(0)}</span>
+                    <ChevronRight className="w-5 h-5" />
+                  </div>
+                </button>
+              </div>
+            )}
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}

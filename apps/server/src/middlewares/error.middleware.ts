@@ -1,0 +1,100 @@
+import { Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger';
+import { AppError } from '../utils/AppError';
+import { Prisma } from '@prisma/client';
+
+export function errorHandler(
+  error: Error,
+  req: Request,
+  res: Response,
+  _next: NextFunction
+): void {
+  // Log the error
+  logger.error('Error handler caught:', {
+    name: error.name,
+    message: error.message,
+    stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+    url: req.originalUrl,
+    method: req.method,
+  });
+
+  // Known operational errors
+  if (error instanceof AppError) {
+    res.status(error.statusCode).json({
+      success: false,
+      error: error.message,
+      code: error.code,
+    });
+    return;
+  }
+
+  // Prisma errors
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === 'P2002') {
+      const target = (error.meta?.target as string[])?.join(', ') ?? 'field';
+      res.status(409).json({
+        success: false,
+        error: `A record with this ${target} already exists.`,
+        code: 'DUPLICATE_ENTRY',
+      });
+      return;
+    }
+
+    if (error.code === 'P2025') {
+      res.status(404).json({
+        success: false,
+        error: 'Record not found.',
+        code: 'RECORD_NOT_FOUND',
+      });
+      return;
+    }
+
+    if (error.code === 'P2003') {
+      res.status(400).json({
+        success: false,
+        error: 'Related record not found. Check foreign key references.',
+        code: 'FOREIGN_KEY_CONSTRAINT',
+      });
+      return;
+    }
+  }
+
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    res.status(400).json({
+      success: false,
+      error: 'Invalid data provided.',
+      code: 'DATABASE_VALIDATION_ERROR',
+    });
+    return;
+  }
+
+  // JWT errors (not caught in middleware)
+  if (error.name === 'JsonWebTokenError') {
+    res.status(401).json({
+      success: false,
+      error: 'Invalid token.',
+      code: 'TOKEN_INVALID',
+    });
+    return;
+  }
+
+  if (error.name === 'TokenExpiredError') {
+    res.status(401).json({
+      success: false,
+      error: 'Token has expired.',
+      code: 'TOKEN_EXPIRED',
+    });
+    return;
+  }
+
+  // Unknown errors
+  const statusCode = res.statusCode !== 200 ? res.statusCode : 500;
+  res.status(statusCode).json({
+    success: false,
+    error:
+      process.env.NODE_ENV === 'production'
+        ? 'An unexpected error occurred. Please try again later.'
+        : error.message,
+    code: 'INTERNAL_SERVER_ERROR',
+  });
+}
