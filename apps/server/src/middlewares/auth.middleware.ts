@@ -19,9 +19,11 @@ export async function authenticate(
 ): Promise<void> {
   try {
     const authHeader = req.headers.authorization;
+    console.log('[AUTH MIDDLEWARE] incoming authHeader:', authHeader);
     const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
     if (!token) {
+      console.log('[AUTH MIDDLEWARE] No token found in header');
       throw new AppError('Authentication required. Please log in.', 401, 'AUTH_REQUIRED');
     }
 
@@ -33,7 +35,9 @@ export async function authenticate(
     let decoded: { id: string; email: string; role: string; name: string };
     try {
       decoded = jwt.verify(token, secret) as typeof decoded;
+      console.log('[AUTH MIDDLEWARE] decoded payload:', decoded);
     } catch (err) {
+      console.log('[AUTH MIDDLEWARE] jwt verify failed:', err);
       if (err instanceof jwt.TokenExpiredError) {
         throw new AppError('Session expired. Please log in again.', 401, 'TOKEN_EXPIRED');
       }
@@ -48,6 +52,8 @@ export async function authenticate(
       },
       select: { id: true, email: true, role: true, name: true },
     });
+
+    console.log('[AUTH MIDDLEWARE] fetched user from DB:', user);
 
     if (!user) {
       throw new AppError('User account not found or has been deactivated.', 401, 'USER_NOT_FOUND');

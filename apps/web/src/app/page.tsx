@@ -3,8 +3,16 @@
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowRight, QrCode, Zap, BarChart3, Shield, Star, ChefHat, Clock, Smartphone } from 'lucide-react';
+import { useAuthStore } from '@/store/auth.store';
+import { useState, useEffect } from 'react';
 
 export default function HomePage() {
+  const { user } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white overflow-hidden">
       {/* Navigation */}
@@ -21,12 +29,31 @@ export default function HomePage() {
           <a href="#pricing" className="hover:text-white transition-colors">Pricing</a>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/login" className="text-sm text-slate-400 hover:text-white transition-colors hidden md:block">
-            Restaurant Login
-          </Link>
-          <Link href="/login" className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all">
-            Admin
-          </Link>
+          {!mounted ? (
+            <div className="h-9 w-20 skeleton rounded-lg bg-white/10" />
+          ) : user ? (
+            <div className="flex items-center gap-3">
+              {user.role === 'SUPER_ADMIN' && (
+                <Link href="/admin/dashboard" className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all font-medium text-white">
+                  Admin Dashboard
+                </Link>
+              )}
+              {user.role === 'RESTAURANT_OWNER' && (
+                <Link href="/owner/dashboard" className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all font-medium text-white">
+                  Restaurant Dashboard
+                </Link>
+              )}
+              {user.role === 'CUSTOMER' && (
+                <Link href="/r/upstates" className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all font-medium text-white">
+                  Browse Menu
+                </Link>
+              )}
+            </div>
+          ) : (
+            <Link href="/login" className="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-all text-white font-medium">
+              Login
+            </Link>
+          )}
         </div>
       </nav>
 
@@ -68,9 +95,21 @@ export default function HomePage() {
                 Try Live Demo
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <Link href="/login" className="flex items-center gap-2 justify-center bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-xl font-semibold transition-all text-base">
-                Restaurant Dashboard
-              </Link>
+              {mounted && user ? (
+                user.role === 'SUPER_ADMIN' ? (
+                  <Link href="/admin/dashboard" className="flex items-center gap-2 justify-center bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-xl font-semibold transition-all text-base">
+                    Admin Dashboard
+                  </Link>
+                ) : user.role === 'RESTAURANT_OWNER' ? (
+                  <Link href="/owner/dashboard" className="flex items-center gap-2 justify-center bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-xl font-semibold transition-all text-base">
+                    Restaurant Dashboard
+                  </Link>
+                ) : null
+              ) : (
+                <Link href="/login" className="flex items-center gap-2 justify-center bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-xl font-semibold transition-all text-base">
+                  Restaurant Dashboard
+                </Link>
+              )}
             </div>
           </motion.div>
 
@@ -268,8 +307,18 @@ export default function HomePage() {
           </div>
           <p className="text-slate-500 text-sm">© 2024 QR Restaurant SaaS. Built with ❤️ in India.</p>
           <div className="flex gap-6 text-sm text-slate-400">
-            <Link href="/login" className="hover:text-white transition-colors">For Restaurants</Link>
-            <Link href="/login" className="hover:text-white transition-colors">Admin</Link>
+            {(!mounted || !user) && (
+              <>
+                <Link href="/login" className="hover:text-white transition-colors">For Restaurants</Link>
+                <Link href="/login" className="hover:text-white transition-colors">Admin</Link>
+              </>
+            )}
+            {mounted && user && user.role === 'SUPER_ADMIN' && (
+              <Link href="/admin/dashboard" className="hover:text-white transition-colors">Admin Dashboard</Link>
+            )}
+            {mounted && user && user.role === 'RESTAURANT_OWNER' && (
+              <Link href="/owner/dashboard" className="hover:text-white transition-colors">Restaurant Dashboard</Link>
+            )}
           </div>
         </div>
       </footer>

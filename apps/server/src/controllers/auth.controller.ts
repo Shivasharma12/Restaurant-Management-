@@ -37,7 +37,7 @@ function setRefreshTokenCookie(res: Response, token: string): void {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: '/api/v1/auth',
+    path: '/',
   });
 }
 
@@ -45,16 +45,24 @@ function setRefreshTokenCookie(res: Response, token: string): void {
 
 export async function register(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { name, email, password, phone, role } = req.body as {
+    const { name, email, password, phone, role, restaurantSlug } = req.body as {
       name: string;
       email: string;
       password: string;
       phone?: string;
       role?: string;
+      restaurantSlug?: string;
     };
 
+    const finalRole = (role as 'CUSTOMER' | 'RESTAURANT_OWNER') ?? 'CUSTOMER';
+
+    // Scoped email for customers
+    const dbEmail = (finalRole === 'CUSTOMER' && restaurantSlug)
+      ? `${restaurantSlug}:${email}`
+      : email;
+
     // Check if email already exists
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findUnique({ where: { email: dbEmail } });
     if (existingUser) {
       throw new AppError('An account with this email already exists.', 409, 'EMAIL_EXISTS');
     }
@@ -70,10 +78,10 @@ export async function register(req: Request, res: Response, next: NextFunction):
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: dbEmail,
         passwordHash,
         phone,
-        role: (role as 'CUSTOMER' | 'RESTAURANT_OWNER') ?? 'CUSTOMER',
+        role: finalRole,
         verifyToken,
         verifyTokenExp,
       },
@@ -110,9 +118,14 @@ export async function register(req: Request, res: Response, next: NextFunction):
     // Send verification email
     await sendVerificationEmail(email, name, verifyToken);
 
+    const cleanUser = {
+      ...user,
+      email: user.email.includes(':') ? user.email.split(':')[1] : user.email,
+    };
+
     res.status(201).json({
       success: true,
-      data: { user },
+      data: { user: cleanUser },
       message: 'Account created! Please check your email to verify your account.',
     });
   } catch (error) {
@@ -124,10 +137,12 @@ export async function register(req: Request, res: Response, next: NextFunction):
 
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password } = req.body as { email: string; password: string };
+    const { email, password, restaurantSlug } = req.body as { email: string; password: string; restaurantSlug?: string };
+
+    const dbEmail = restaurantSlug ? `${restaurantSlug}:${email}` : email;
 
     const user = await prisma.user.findFirst({
-      where: { email, deletedAt: null },
+      where: { email: dbEmail, deletedAt: null },
     });
 
     if (!user || !user.passwordHash) {
@@ -166,7 +181,7 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
         user: {
           id: user.id,
           name: user.name,
-          email: user.email,
+          email: user.email.includes(':') ? user.email.split(':')[1] : user.email,
           phone: user.phone,
           role: user.role,
           isVerified: user.isVerified,
@@ -226,9 +241,11 @@ export async function forgotPassword(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { email } = req.body as { email: string };
+    const { email, restaurantSlug } = req.body as { email: string; restaurantSlug?: string };
 
-    const user = await prisma.user.findFirst({ where: { email, deletedAt: null } });
+    const dbEmail = restaurantSlug ? `${restaurantSlug}:${email}` : email;
+
+    const user = await prisma.user.findFirst({ where: { email: dbEmail, deletedAt: null } });
 
     // Always respond with success (don't leak user existence)
     if (user) {
@@ -289,7 +306,8 @@ export async function resetPassword(
       },
     });
 
-    // Invalidate all existing refresh tokens by clearing cookie on client
+    // Invalidate all existing refresh tokens by clearing cookies on client
+    res.clearCookie('refreshToken', { path: '/' });
     res.clearCookie('refreshToken', { path: '/api/v1/auth' });
 
     res.json({ success: true, data: null, message: 'Password reset successfully! Please log in with your new password.' });
@@ -337,9 +355,14 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
 
     setRefreshTokenCookie(res, newRefreshToken);
 
+    const cleanUser = {
+      ...user,
+      email: user.email.includes(':') ? user.email.split(':')[1] : user.email,
+    };
+
     res.json({
       success: true,
-      data: { accessToken, user },
+      data: { accessToken, user: cleanUser },
     });
   } catch (error) {
     next(error);
@@ -350,6 +373,7 @@ export async function refreshToken(req: Request, res: Response, next: NextFuncti
 
 export async function logout(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
+    res.clearCookie('refreshToken', { path: '/' });
     res.clearCookie('refreshToken', { path: '/api/v1/auth' });
     res.json({ success: true, data: null, message: 'Logged out successfully' });
   } catch (error) {
@@ -384,7 +408,12 @@ export async function getMe(req: AuthenticatedRequest, res: Response, next: Next
       throw new AppError('User not found.', 404, 'USER_NOT_FOUND');
     }
 
-    res.json({ success: true, data: { user } });
+    const cleanUser = {
+      ...user,
+      email: user.email.includes(':') ? user.email.split(':')[1] : user.email,
+    };
+
+    res.json({ success: true, data: { user: cleanUser } });
   } catch (error) {
     next(error);
   }

@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, Loader2, QrCode, Zap, Shield, Store, User } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
@@ -21,6 +21,8 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const restaurantSlug = searchParams.get('restaurant');
   const { setUser } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,10 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', data);
+      const response = await api.post('/auth/login', {
+        ...data,
+        restaurantSlug: restaurantSlug || undefined,
+      });
       const { user, accessToken } = response.data.data as {
         user: {
           id: string; name: string; email: string; phone: string | null;
@@ -41,12 +46,14 @@ export default function LoginPage() {
         accessToken: string;
       };
 
-      setUser(user, accessToken);
+      setUser(user, accessToken, restaurantSlug || null);
 
       if (user.role === 'SUPER_ADMIN') {
         router.push('/admin/dashboard');
       } else if (user.role === 'RESTAURANT_OWNER') {
         router.push('/owner/dashboard');
+      } else if (restaurantSlug) {
+        router.push(`/r/${restaurantSlug}`);
       } else {
         router.push('/');
       }
@@ -86,8 +93,12 @@ export default function LoginPage() {
               </div>
               <span className="font-display font-bold text-xl text-white">QR Restaurant</span>
             </Link>
-            <h1 className="font-display text-3xl font-bold text-white mb-2">Welcome back</h1>
-            <p className="text-slate-400">Sign in to your account</p>
+            <h1 className="font-display text-3xl font-bold text-white mb-2">
+              {restaurantSlug ? 'Customer Login' : 'Welcome back'}
+            </h1>
+            <p className="text-slate-400">
+              {restaurantSlug ? `Sign in to order from ${restaurantSlug.toUpperCase()}` : 'Sign in to your account'}
+            </p>
           </div>
 
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl flex-1 flex flex-col justify-center">
@@ -128,7 +139,7 @@ export default function LoginPage() {
               </div>
 
               <div className="flex justify-end">
-                <Link href="/forgot-password" className="text-sm text-orange-400 hover:text-orange-300">
+                <Link href={restaurantSlug ? `/forgot-password?restaurant=${restaurantSlug}` : "/forgot-password"} className="text-sm text-orange-400 hover:text-orange-300">
                   Forgot password?
                 </Link>
               </div>
@@ -166,7 +177,7 @@ export default function LoginPage() {
 
             <p className="text-center text-slate-400 text-sm mt-5">
               Don't have an account?{' '}
-              <Link href="/register" className="text-orange-400 hover:text-orange-300 font-medium">
+              <Link href={restaurantSlug ? `/register?restaurant=${restaurantSlug}` : "/register"} className="text-orange-400 hover:text-orange-300 font-medium">
                 Sign up
               </Link>
             </p>
@@ -181,55 +192,10 @@ export default function LoginPage() {
               Quick Demo Login
             </h2>
             <p className="text-slate-400 text-sm mb-6">
-              Click any role below to prefill credentials and sign in instantly.
+              Click the button below to prefill credentials and sign in instantly.
             </p>
 
             <div className="space-y-4">
-              {/* Super Admin */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('admin@qrrestaurant.com', 'Admin@123456')}
-                className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/10 hover:border-purple-500/50 hover:bg-white/10 transition-all group flex items-start gap-4"
-              >
-                <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
-                  <Shield className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-white text-sm">Super Admin</span>
-                    <span className="text-[10px] text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full font-medium">Platform Controller</span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">Manage all restaurants and view global platform insights.</p>
-                  <div className="text-[11px] text-slate-500 mt-2 font-mono flex flex-col">
-                    <span>Email: admin@qrrestaurant.com</span>
-                    <span>Pass: Admin@123456</span>
-                  </div>
-                </div>
-              </button>
-
-              {/* Restaurant Owner */}
-              <button
-                type="button"
-                onClick={() => handleQuickLogin('owner@upstates.com', 'Owner@123456')}
-                className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/10 hover:border-orange-500/50 hover:bg-white/10 transition-all group flex items-start gap-4"
-              >
-                <div className="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 group-hover:scale-110 transition-transform">
-                  <Store className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-white text-sm">Restaurant Owner</span>
-                    <span className="text-[10px] text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full font-medium">Upstates Owner</span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">Manage menus, track incoming orders, view sales, and customize settings.</p>
-                  <div className="text-[11px] text-slate-500 mt-2 font-mono flex flex-col">
-                    <span>Email: owner@upstates.com</span>
-                    <span>Pass: Owner@123456</span>
-                  </div>
-                </div>
-              </button>
-
-              {/* Customer */}
               <button
                 type="button"
                 onClick={() => handleQuickLogin('customer@example.com', 'Customer@123')}
@@ -247,6 +213,48 @@ export default function LoginPage() {
                   <div className="text-[11px] text-slate-500 mt-2 font-mono flex flex-col">
                     <span>Email: customer@example.com</span>
                     <span>Pass: Customer@123</span>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('owner@upstates.com', 'Owner@123456')}
+                className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/10 hover:border-amber-500/50 hover:bg-white/10 transition-all group flex items-start gap-4"
+              >
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform">
+                  <Store className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white text-sm">Demo Owner</span>
+                    <span className="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full font-medium">Restaurant Owner</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Manage menus, customize branding, view orders, and manage settings.</p>
+                  <div className="text-[11px] text-slate-500 mt-2 font-mono flex flex-col">
+                    <span>Email: owner@upstates.com</span>
+                    <span>Pass: Owner@123456</span>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickLogin('admin@qrrestaurant.com', 'Admin@123456')}
+                className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/10 hover:border-purple-500/50 hover:bg-white/10 transition-all group flex items-start gap-4"
+              >
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
+                  <Shield className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-white text-sm">Demo Admin</span>
+                    <span className="text-[10px] text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded-full font-medium">Super Admin</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Manage global platform state, approve/revoke owners, and view system stats.</p>
+                  <div className="text-[11px] text-slate-500 mt-2 font-mono flex flex-col">
+                    <span>Email: admin@qrrestaurant.com</span>
+                    <span>Pass: Admin@123456</span>
                   </div>
                 </div>
               </button>

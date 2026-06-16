@@ -21,7 +21,14 @@ export const api = axios.create({
 // Request interceptor — attach access token
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().accessToken;
+  if (typeof window !== 'undefined') {
+    console.log(`🚀 [API Request] ${config.method?.toUpperCase()} ${config.url}`, {
+      hasToken: !!token,
+      tokenPreview: token ? `${token.substring(0, 15)}...` : 'none',
+    });
+  }
   if (token) {
+    config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -50,8 +57,19 @@ api.interceptors.response.use(
   async (error: AxiosError<{ error: string; code: string }>) => {
     const originalRequest = error.config as typeof error.config & { _retry?: boolean };
 
+    if (typeof window !== 'undefined') {
+      console.warn(`⚠️ [API Response Error] ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}`, {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
+        if (typeof window !== 'undefined') {
+          console.log('🔄 [API Refresh] Already refreshing, queuing request...');
+        }
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
@@ -67,6 +85,10 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
+      if (typeof window !== 'undefined') {
+        console.log('🔄 [API Refresh] Starting token refresh...');
+      }
+
       try {
         const { data } = await axios.post(
           `${API_BASE_URL}/auth/refresh`,
@@ -75,7 +97,18 @@ api.interceptors.response.use(
         );
 
         const newToken = data.data.accessToken as string;
-        useAuthStore.getState().setAccessToken(newToken);
+        const refreshedUser = data.data.user;
+
+        if (typeof window !== 'undefined') {
+          console.log('🔄 [API Refresh] Success. New token obtained. User:', refreshedUser);
+        }
+
+        if (refreshedUser) {
+          useAuthStore.getState().setUser(refreshedUser, newToken);
+        } else {
+          useAuthStore.getState().setAccessToken(newToken);
+        }
+
         processQueue(null, newToken);
 
         if (originalRequest.headers) {
@@ -84,6 +117,9 @@ api.interceptors.response.use(
 
         return api(originalRequest);
       } catch (refreshError) {
+        if (typeof window !== 'undefined') {
+          console.error('❌ [API Refresh] Token refresh failed, logging out:', refreshError);
+        }
         processQueue(refreshError as Error, null);
         useAuthStore.getState().logout();
         if (typeof window !== 'undefined') {

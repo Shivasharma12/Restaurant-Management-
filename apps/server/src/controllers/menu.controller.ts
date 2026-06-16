@@ -39,6 +39,7 @@ export async function getRestaurantMenu(
         phone: true,
         operatingHours: true,
         isOpen: true,
+        hasDelivery: true,
         minOrderValue: true,
         deliveryRadius: true,
         themeColor: true,

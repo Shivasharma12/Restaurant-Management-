@@ -23,7 +23,7 @@ export async function getRecommendations(
     const cacheKey = `ai:recommend:${userId}:${restaurantId}`;
     const cached = await cacheGet(cacheKey);
     if (cached) {
-      res.json({ success: true, data: cached, fromCache: true });
+      res.json({ success: true, data: { recommendations: cached }, fromCache: true });
       return;
     }
 

@@ -134,6 +134,7 @@ model Restaurant {
   deliveryRadius  Float?
   minOrderValue   Float    @default(0)
   isOpen          Boolean  @default(false)
+  hasDelivery     Boolean  @default(true)
   isApproved      Boolean  @default(false)
   isSuspended     Boolean  @default(false)
   themeColor      String?

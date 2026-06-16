@@ -17,8 +17,9 @@ interface AuthState {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  loginRestaurantSlug: string | null;
 
-  setUser: (user: User, accessToken: string) => void;
+  setUser: (user: User, accessToken: string, loginRestaurantSlug?: string | null) => void;
   setAccessToken: (token: string) => void;
   updateUser: (updates: Partial<User>) => void;
   logout: () => void;
@@ -32,9 +33,10 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       isAuthenticated: false,
       isLoading: false,
+      loginRestaurantSlug: null,
 
-      setUser: (user, accessToken) =>
-        set({ user, accessToken, isAuthenticated: true }),
+      setUser: (user, accessToken, loginRestaurantSlug = null) =>
+        set({ user, accessToken, isAuthenticated: true, loginRestaurantSlug }),
 
       setAccessToken: (accessToken) => set({ accessToken }),
 
@@ -45,7 +47,7 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      logout: () => set({ user: null, accessToken: null, isAuthenticated: false }),
+      logout: () => set({ user: null, accessToken: null, isAuthenticated: false, loginRestaurantSlug: null }),
 
       setLoading: (isLoading) => set({ isLoading }),
     }),
@@ -56,6 +58,7 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         accessToken: state.accessToken,
         isAuthenticated: state.isAuthenticated,
+        loginRestaurantSlug: state.loginRestaurantSlug,
       }),
     }
   )

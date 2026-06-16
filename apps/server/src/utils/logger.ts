@@ -6,8 +6,9 @@ const devFormat = combine(
   colorize({ all: true }),
   timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
   errors({ stack: true }),
-  printf(({ level, message, timestamp: ts, stack }) => {
-    return `${ts} [${level}]: ${stack ?? message}`;
+  printf(({ level, message, timestamp: ts, stack, ...metadata }) => {
+    const metaStr = Object.keys(metadata).length ? ` ${JSON.stringify(metadata)}` : '';
+    return `${ts} [${level}]: ${stack ?? message}${metaStr}`;
   })
 );
 

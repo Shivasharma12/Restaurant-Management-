@@ -64,4 +64,4 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+bootstrap(); // Trigger reload

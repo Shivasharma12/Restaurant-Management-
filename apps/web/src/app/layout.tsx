@@ -63,6 +63,33 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} ${plusJakartaSans.variable} font-sans`}>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                var handler = function(error) {
+                  if (error && (error.name === 'ChunkLoadError' || 
+                      /Loading chunk [\\s\\S]+ failed/.test(error.message) || 
+                      /Loading CSS chunk/.test(error.message) ||
+                      (error.message && error.message.indexOf('ChunkLoadError') !== -1))) {
+                    var now = Date.now();
+                    var lastReload = sessionStorage.getItem('last-chunk-reload');
+                    if (!lastReload || (now - parseInt(lastReload, 10)) > 8000) {
+                      sessionStorage.setItem('last-chunk-reload', now.toString());
+                      window.location.reload();
+                    }
+                  }
+                };
+                window.addEventListener('error', function(event) {
+                  handler(event.error || event);
+                }, true);
+                window.addEventListener('unhandledrejection', function(event) {
+                  handler(event.reason);
+                });
+              })();
+            `
+          }}
+        />
         <Providers>
           {children}
           <Toaster
@@ -83,3 +110,4 @@ export default function RootLayout({
     </html>
   );
 }
+

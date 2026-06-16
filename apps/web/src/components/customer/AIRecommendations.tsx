@@ -20,7 +20,8 @@ export function AIRecommendations({ restaurantId, themeColor }: AIRecommendation
     queryKey: ['ai-recommendations', restaurantId],
     queryFn: async () => {
       const response = await api.post('/ai/recommend', { restaurantId });
-      return response.data.data.recommendations as Array<{
+      const recommendations = response.data?.data?.recommendations ?? (Array.isArray(response.data?.data) ? response.data.data : []);
+      return recommendations as Array<{
         menuItemId: string;
         name: string;
         reason: string;

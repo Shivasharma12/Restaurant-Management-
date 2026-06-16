@@ -14,6 +14,7 @@ import { AIChatbot } from './AIChatbot';
 import { AIRecommendations } from './AIRecommendations';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import { getDetailedStatus, formatTime12h } from '@/utils/operatingHours';
 
 interface RestaurantMenuPageProps {
   slug: string;
@@ -29,7 +30,16 @@ export function RestaurantMenuPage({ slug, tableNumber }: RestaurantMenuPageProp
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const { items: cartItems, itemCount, setRestaurant } = useCartStore();
-  const { user } = useAuthStore();
+  const { user: rawUser, loginRestaurantSlug, logout } = useAuthStore();
+  
+  const activeUser = useMemo(() => {
+    if (!rawUser) return null;
+    if (rawUser.role !== 'CUSTOMER') return rawUser;
+    if (loginRestaurantSlug === slug) return rawUser;
+    return null;
+  }, [rawUser, loginRestaurantSlug, slug]);
+
+  const [showHours, setShowHours] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['menu', slug],
@@ -70,6 +80,11 @@ export function RestaurantMenuPage({ slug, tableNumber }: RestaurantMenuPageProp
     },
     staleTime: 5 * 60 * 1000,
   });
+
+  const statusInfo = useMemo(() => {
+    if (!data?.restaurant) return { status: 'CLOSED' as const, badgeText: 'Closed', detailText: 'Closed' };
+    return getDetailedStatus(data.restaurant.operatingHours as any, data.restaurant.isOpen);
+  }, [data]);
 
   useEffect(() => {
     if (data?.restaurant) {
@@ -142,9 +157,45 @@ export function RestaurantMenuPage({ slug, tableNumber }: RestaurantMenuPageProp
           <span className="font-display font-bold text-sm tracking-tight">QR Restaurant</span>
         </Link>
         <div className="flex items-center gap-3">
-          <Link href="/login" className="text-xs bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all">
-            Partner Login
-          </Link>
+          {activeUser ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-white/90 font-semibold bg-white/10 px-2.5 py-1.5 rounded-lg backdrop-blur-md">
+                Hi, {activeUser.name.split(' ')[0]}
+              </span>
+              {activeUser.role !== 'CUSTOMER' ? (
+                <Link
+                  href={activeUser.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/owner/dashboard'}
+                  className="text-xs bg-primary hover:bg-primary/95 border border-primary/20 px-3 py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all"
+                >
+                  Dashboard
+                </Link>
+              ) : null}
+              <button
+                onClick={() => {
+                  logout();
+                  toast.success('Logged out successfully');
+                }}
+                className="text-xs bg-red-500/80 hover:bg-red-500 border border-red-500/20 px-3 py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <>
+              <Link
+                href={`/login?restaurant=${slug}`}
+                className="text-xs bg-primary hover:bg-primary/95 border border-primary/20 px-3 py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all"
+              >
+                Login
+              </Link>
+              <Link
+                href="/login"
+                className="text-xs bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md px-3 py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all"
+              >
+                Partner Login
+              </Link>
+            </>
+          )}
         </div>
       </div>
       {/* Banner */}
@@ -176,16 +227,81 @@ export function RestaurantMenuPage({ slug, tableNumber }: RestaurantMenuPageProp
             </div>
           )}
           <div className="flex-1 pb-2">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap relative">
               <h1 className="font-display text-2xl md:text-3xl font-bold">{restaurant.name}</h1>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                restaurant.isOpen
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${restaurant.isOpen ? 'bg-green-500' : 'bg-red-500'}`} />
-                {restaurant.isOpen ? 'Open' : 'Closed'}
-              </span>
+              
+              {/* Interactive Status Badge & Weekly Hours Dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowHours(!showHours)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-sm transition-all hover:scale-105 active:scale-95 ${
+                    statusInfo.status === 'OPEN'
+                      ? 'bg-green-500/10 text-green-600 border border-green-500/20 dark:bg-green-500/20 dark:text-green-400'
+                      : statusInfo.status === 'TEMPORARILY_CLOSED'
+                      ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400'
+                      : 'bg-red-500/10 text-red-600 border border-red-500/20 dark:bg-red-500/20 dark:text-red-400'
+                  }`}
+                >
+                  <span className={`w-2 h-2 rounded-full animate-pulse ${
+                    statusInfo.status === 'OPEN'
+                      ? 'bg-green-500'
+                      : statusInfo.status === 'TEMPORARILY_CLOSED'
+                      ? 'bg-amber-500'
+                      : 'bg-red-500'
+                  }`} />
+                  <span>{statusInfo.badgeText}</span>
+                  <span className="text-[10px] opacity-75 font-normal">({statusInfo.detailText})</span>
+                  <Clock className="w-3 h-3 ml-0.5 opacity-60" />
+                </button>
+
+                {/* Dropdown Weekly Hours */}
+                <AnimatePresence>
+                  {showHours && restaurant.operatingHours && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowHours(false)} />
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute left-0 mt-2 z-50 w-72 bg-card/95 backdrop-blur-md border border-border shadow-2xl rounded-2xl p-4 text-card-foreground"
+                      >
+                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
+                          <h4 className="font-semibold text-sm flex items-center gap-1.5">
+                            <Clock className="w-4 h-4 text-primary" /> Weekly Hours
+                          </h4>
+                          <button onClick={() => setShowHours(false)} className="text-muted-foreground hover:text-foreground">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                            const dayHours = (restaurant.operatingHours as any)?.[day];
+                            const isToday = new Date().getDay() === ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(day);
+                            return (
+                              <div
+                                key={day}
+                                className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
+                                  isToday
+                                    ? 'bg-primary/10 text-primary border border-primary/20 font-semibold shadow-sm'
+                                    : 'text-muted-foreground'
+                                }`}
+                              >
+                                <span className="capitalize">{day}</span>
+                                <span>
+                                  {dayHours?.closed || !dayHours?.open
+                                    ? 'Closed'
+                                    : `${formatTime12h(dayHours.open)} - ${formatTime12h(dayHours.close)}`}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
             {restaurant.cuisineType && (
               <p className="text-muted-foreground text-sm mt-1">{restaurant.cuisineType}</p>
@@ -208,7 +324,7 @@ export function RestaurantMenuPage({ slug, tableNumber }: RestaurantMenuPageProp
       </div>
 
       {/* AI Recommendations (logged-in only) */}
-      {user && (
+      {activeUser && (
         <div className="px-4 md:px-8 mb-4">
           <AIRecommendations restaurantId={restaurant.id} themeColor={themeColor} />
         </div>
@@ -296,6 +412,7 @@ export function RestaurantMenuPage({ slug, tableNumber }: RestaurantMenuPageProp
                     item={item}
                     themeColor={themeColor}
                     restaurantId={restaurant.id}
+                    restaurantSlug={slug}
                   />
                 ))}
               </div>

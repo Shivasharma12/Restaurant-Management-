@@ -41,6 +41,20 @@ export const userCheckoutSchema = z.object({
   couponCode: z.string().optional(),
   restaurantSlug: z.string().min(1),
   useWallet: z.boolean().default(false),
+  cartItems: z.array(
+    z.object({
+      menuItemId: z.string().cuid(),
+      variantId: z.string().cuid().optional().nullable(),
+      quantity: z.number().int().positive(),
+      addOns: z.array(
+        z.object({
+          id: z.string().cuid(),
+          name: z.string(),
+          price: z.number().min(0),
+        })
+      ).default([]),
+    })
+  ).optional(),
 });
 
 export const updateOrderStatusSchema = z.object({

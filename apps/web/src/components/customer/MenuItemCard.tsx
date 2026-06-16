@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Plus, Minus, Heart, Leaf, Flame } from 'lucide-react';
@@ -25,6 +25,7 @@ interface MenuItemCardProps {
   };
   themeColor: string;
   restaurantId: string;
+  restaurantSlug?: string;
 }
 
 const BADGE_CONFIG: Record<string, { label: string; className: string }> = {
@@ -34,7 +35,7 @@ const BADGE_CONFIG: Record<string, { label: string; className: string }> = {
   NEW: { label: '✨ New', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
 };
 
-export function MenuItemCard({ item, themeColor, restaurantId }: MenuItemCardProps) {
+export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug }: MenuItemCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<{ id: string; name: string; price: number } | null>(
     item.variants.length > 0 ? (item.variants[0] ?? null) : null
   );
@@ -44,7 +45,14 @@ export function MenuItemCard({ item, themeColor, restaurantId }: MenuItemCardPro
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
   const { addItem, items: cartItems, updateQuantity, removeItem } = useCartStore();
-  const { user } = useAuthStore();
+  const { user: rawUser, loginRestaurantSlug } = useAuthStore();
+
+  const activeUser = useMemo(() => {
+    if (!rawUser) return null;
+    if (rawUser.role !== 'CUSTOMER') return rawUser;
+    if (loginRestaurantSlug === restaurantSlug) return rawUser;
+    return null;
+  }, [rawUser, loginRestaurantSlug, restaurantSlug]);
 
   const cartItemId = `${item.id}:${selectedVariant?.id ?? 'default'}`;
   const cartItem = cartItems.find((ci) => ci.id === cartItemId);
@@ -79,7 +87,7 @@ export function MenuItemCard({ item, themeColor, restaurantId }: MenuItemCardPro
   };
 
   const toggleFavorite = async () => {
-    if (!user) {
+    if (!activeUser) {
       toast.info('Please log in to save favorites');
       return;
     }

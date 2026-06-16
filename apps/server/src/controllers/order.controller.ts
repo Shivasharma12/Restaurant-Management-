@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
+import { isRestaurantOpen } from '../utils/operatingHours';
 import { AppError } from '../utils/AppError';
 import { createRazorpayOrder, verifyRazorpaySignature } from '../services/payment.razorpay.service';
 import { emitNewOrder, emitNotification } from '../services/socket.service';
@@ -134,7 +135,9 @@ export async function placeGuestOrder(
     });
 
     if (!restaurant) throw new AppError('Restaurant not found.', 404, 'RESTAURANT_NOT_FOUND');
-    if (!restaurant.isOpen) throw new AppError('Restaurant is currently closed.', 400, 'RESTAURANT_CLOSED');
+    if (!restaurant.isOpen || !isRestaurantOpen(restaurant.operatingHours)) {
+      throw new AppError('Restaurant is currently closed or outside operating hours.', 400, 'RESTAURANT_CLOSED');
+    }
 
     const { items, subtotal, gstAmount, deliveryFee, packagingFee, discount, total, couponId } =
       await calculateOrderTotal(cartItems, couponCode, restaurant.id);
@@ -249,7 +252,7 @@ export async function placeOrder(
 ): Promise<void> {
   try {
     const userId = req.user!.id;
-    const { addressId, newAddress, tableNumber, paymentMethod, couponCode, restaurantSlug, useWallet } = req.body as {
+    const { addressId, newAddress, tableNumber, paymentMethod, couponCode, restaurantSlug, useWallet, cartItems: reqCartItems } = req.body as {
       addressId?: string;
       newAddress?: { label: string; flat: string; street: string; area: string; city: string; pincode: string; isDefault: boolean };
       tableNumber?: string;
@@ -257,6 +260,7 @@ export async function placeOrder(
       couponCode?: string;
       restaurantSlug: string;
       useWallet?: boolean;
+      cartItems?: Array<{ menuItemId: string; variantId?: string | null; quantity: number; addOns?: Array<{ id: string; name: string; price: number }> }>;
     };
 
     const restaurant = await prisma.restaurant.findFirst({
@@ -264,13 +268,37 @@ export async function placeOrder(
     });
 
     if (!restaurant) throw new AppError('Restaurant not found.', 404, 'RESTAURANT_NOT_FOUND');
-    if (!restaurant.isOpen) throw new AppError('Restaurant is currently closed.', 400, 'RESTAURANT_CLOSED');
+    if (!restaurant.isOpen || !isRestaurantOpen(restaurant.operatingHours)) {
+      throw new AppError('Restaurant is currently closed or outside operating hours.', 400, 'RESTAURANT_CLOSED');
+    }
 
-    // Get cart from DB
-    const cartItems = await prisma.cartItem.findMany({
-      where: { userId },
-      include: { menuItem: true, variant: true },
-    });
+    let cartItems: Array<{
+      menuItemId: string;
+      variantId?: string | null;
+      quantity: number;
+      addOns: Array<{ id: string; name: string; price: number }>;
+    }> = [];
+
+    if (reqCartItems && reqCartItems.length > 0) {
+      cartItems = reqCartItems.map((ci) => ({
+        menuItemId: ci.menuItemId,
+        variantId: ci.variantId,
+        quantity: ci.quantity,
+        addOns: ci.addOns ?? [],
+      }));
+    } else {
+      // Get cart from DB
+      const dbCartItems = await prisma.cartItem.findMany({
+        where: { userId },
+        include: { menuItem: true, variant: true },
+      });
+      cartItems = dbCartItems.map((ci) => ({
+        menuItemId: ci.menuItemId,
+        variantId: ci.variantId,
+        quantity: ci.quantity,
+        addOns: ci.addOns as Array<{ id: string; name: string; price: number }>,
+      }));
+    }
 
     if (cartItems.length === 0) {
       throw new AppError('Your cart is empty.', 400, 'EMPTY_CART');
@@ -278,12 +306,7 @@ export async function placeOrder(
 
     const { items, subtotal, gstAmount, deliveryFee, packagingFee, discount, total, couponId } =
       await calculateOrderTotal(
-        cartItems.map((ci) => ({
-          menuItemId: ci.menuItemId,
-          variantId: ci.variantId,
-          quantity: ci.quantity,
-          addOns: ci.addOns as Array<{ id: string; name: string; price: number }>,
-        })),
+        cartItems,
         couponCode,
         restaurant.id,
         userId
