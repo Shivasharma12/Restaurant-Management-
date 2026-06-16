@@ -21,7 +21,8 @@ async function calculateOrderTotal(
   }>,
   couponCode?: string,
   restaurantId?: string,
-  userId?: string
+  userId?: string,
+  isDineIn?: boolean
 ): Promise<{
   items: Array<{
     menuItemId: string;
@@ -98,14 +99,16 @@ async function calculateOrderTotal(
     }
   }
 
-  const total = subtotal + gstAmount + DELIVERY_FEE + PACKAGING_FEE - discount;
+  const deliveryFee = isDineIn ? 0 : DELIVERY_FEE;
+  const packagingFee = isDineIn ? 0 : PACKAGING_FEE;
+  const total = subtotal + gstAmount + deliveryFee + packagingFee - discount;
 
   return {
     items: processedItems,
     subtotal: parseFloat(subtotal.toFixed(2)),
     gstAmount: parseFloat(gstAmount.toFixed(2)),
-    deliveryFee: DELIVERY_FEE,
-    packagingFee: PACKAGING_FEE,
+    deliveryFee,
+    packagingFee,
     discount: parseFloat(discount.toFixed(2)),
     total: parseFloat(Math.max(total, 0).toFixed(2)),
     couponId,
@@ -139,10 +142,11 @@ export async function placeGuestOrder(
       throw new AppError('Restaurant is currently closed or outside operating hours.', 400, 'RESTAURANT_CLOSED');
     }
 
+    const isDineIn = !!tableNumber;
     const { items, subtotal, gstAmount, deliveryFee, packagingFee, discount, total, couponId } =
-      await calculateOrderTotal(cartItems, couponCode, restaurant.id);
+      await calculateOrderTotal(cartItems, couponCode, restaurant.id, undefined, isDineIn);
 
-    if (subtotal < restaurant.minOrderValue) {
+    if (!isDineIn && subtotal < restaurant.minOrderValue) {
       throw new AppError(
         `Minimum order value is ₹${restaurant.minOrderValue}.`,
         400,
@@ -304,15 +308,17 @@ export async function placeOrder(
       throw new AppError('Your cart is empty.', 400, 'EMPTY_CART');
     }
 
+    const isDineIn = !!tableNumber;
     const { items, subtotal, gstAmount, deliveryFee, packagingFee, discount, total, couponId } =
       await calculateOrderTotal(
         cartItems,
         couponCode,
         restaurant.id,
-        userId
+        userId,
+        isDineIn
       );
 
-    if (subtotal < restaurant.minOrderValue) {
+    if (!isDineIn && subtotal < restaurant.minOrderValue) {
       throw new AppError(`Minimum order value is ₹${restaurant.minOrderValue}.`, 400, 'MIN_ORDER_NOT_MET');
     }
 

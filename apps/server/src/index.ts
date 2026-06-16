@@ -11,9 +11,24 @@ const PORT = parseInt(process.env.PORT ?? '4000', 10);
 
 async function bootstrap() {
   try {
-    // Test DB connection
-    await prisma.$connect();
-    logger.info('✅ Database connected');
+    // Test DB connection with retry loop
+    let dbConnected = false;
+    let retries = 5;
+    while (retries > 0 && !dbConnected) {
+      try {
+        await prisma.$connect();
+        dbConnected = true;
+        logger.info('✅ Database connected');
+      } catch (err) {
+        retries--;
+        if (retries === 0) {
+          logger.error('❌ Database connection failed after maximum retries.');
+          throw err;
+        }
+        logger.warn(`⚠️ Database connection failed. Retrying in 2 seconds... (${retries} retries remaining)`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    }
 
     // Connect Redis
     await connectRedis();

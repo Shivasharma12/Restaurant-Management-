@@ -168,7 +168,9 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
 
   const subtotalAmount = subtotal();
   const gst = subtotalAmount * GST_RATE;
-  const grandTotal = total();
+  const isDineIn = diningOption === 'DINE_IN';
+  const deliveryPlusPackaging = isDineIn ? 0 : (DELIVERY_FEE + PACKAGING_FEE);
+  const grandTotal = Math.max(subtotalAmount + gst + deliveryPlusPackaging - couponDiscount, 0);
 
   const { register, handleSubmit, formState: { errors } } = useForm<GuestForm>({
     resolver: zodResolver(guestSchema),
@@ -279,8 +281,9 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
         toast.success('Order placed successfully! 🎉');
         router.push(`/r/${restaurantSlug}/order/${order.id}`);
       }
-    } catch {
-      toast.error('Failed to place order. Please try again.');
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error ?? err.response?.data?.message ?? 'Failed to place order. Please try again.';
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -319,8 +322,9 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
         toast.success('Order placed! 🎉');
         router.push(`/r/${restaurantSlug}/order/${order.id}`);
       }
-    } catch {
-      toast.error('Failed to place order. Please try again.');
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error ?? err.response?.data?.message ?? 'Failed to place order. Please try again.';
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }
@@ -390,9 +394,11 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
             <div className="flex justify-between text-muted-foreground">
               <span>GST (18%)</span><span>₹{gst.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Delivery + Packaging</span><span>₹{DELIVERY_FEE + PACKAGING_FEE}</span>
-            </div>
+            {!isDineIn && (
+              <div className="flex justify-between text-muted-foreground">
+                <span>Delivery + Packaging</span><span>₹{DELIVERY_FEE + PACKAGING_FEE}</span>
+              </div>
+            )}
             {couponDiscount > 0 && (
               <div className="flex justify-between text-green-600">
                 <span>Coupon ({couponCode})</span><span>-₹{couponDiscount.toFixed(2)}</span>

@@ -33,7 +33,9 @@ export function CartDrawer({ open, onClose, restaurantSlug, tableNumber, themeCo
   const subtotalAmount = subtotal();
   const gst = gstAmount();
   const discount = couponDiscount;
-  const grandTotal = total();
+  const isDineIn = !!tableNumber;
+  const deliveryPlusPackaging = isDineIn ? 0 : (DELIVERY_FEE + PACKAGING_FEE);
+  const grandTotal = Math.max(subtotalAmount + gst - discount + deliveryPlusPackaging, 0);
 
   // AI Coupon Suggestion
   const { data: couponSuggestion } = useQuery({
@@ -245,14 +247,18 @@ export function CartDrawer({ open, onClose, restaurantSlug, tableNumber, themeCo
                     <span className="text-muted-foreground">GST (18%)</span>
                     <span>₹{gst.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Delivery fee</span>
-                    <span>₹{DELIVERY_FEE}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Packaging</span>
-                    <span>₹{PACKAGING_FEE}</span>
-                  </div>
+                  {!isDineIn && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Delivery fee</span>
+                        <span>₹{DELIVERY_FEE}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Packaging</span>
+                        <span>₹{PACKAGING_FEE}</span>
+                      </div>
+                    </>
+                  )}
                   {discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Coupon discount</span>

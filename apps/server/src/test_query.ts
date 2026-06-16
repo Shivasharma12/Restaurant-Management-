@@ -6,11 +6,19 @@ async function main() {
     const restaurant = await prisma.restaurant.findFirst({
       where: { deletedAt: null },
     });
-    console.log("Restaurant found:", restaurant?.id, restaurant?.name);
+    console.log("Restaurant found:", {
+      id: restaurant?.id,
+      name: restaurant?.name,
+      slug: restaurant?.slug,
+      isOpen: restaurant?.isOpen,
+      operatingHours: restaurant?.operatingHours,
+    });
     if (!restaurant) {
       console.log("No restaurant found!");
       return;
     }
+    const addOns = await prisma.itemAddOn.findMany({ take: 5 });
+    console.log("Sample AddOns:", addOns);
     
     console.log("Running aggregation query...");
     const today = new Date();
