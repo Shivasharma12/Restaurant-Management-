@@ -138,7 +138,7 @@ export async function placeGuestOrder(
     });
 
     if (!restaurant) throw new AppError('Restaurant not found.', 404, 'RESTAURANT_NOT_FOUND');
-    if (!restaurant.isOpen || !isRestaurantOpen(restaurant.operatingHours)) {
+    if (!restaurant.isOpen || !isRestaurantOpen(restaurant.operatingHours, restaurant.isOpen)) {
       throw new AppError('Restaurant is currently closed or outside operating hours.', 400, 'RESTAURANT_CLOSED');
     }
 
@@ -256,6 +256,9 @@ export async function placeOrder(
 ): Promise<void> {
   try {
     const userId = req.user!.id;
+    if (req.user!.role !== 'CUSTOMER') {
+      throw new AppError('Restaurant owners and administrators are not allowed to place orders.', 403, 'ORDER_RESTRICTED');
+    }
     const { addressId, newAddress, tableNumber, paymentMethod, couponCode, restaurantSlug, useWallet, cartItems: reqCartItems } = req.body as {
       addressId?: string;
       newAddress?: { label: string; flat: string; street: string; area: string; city: string; pincode: string; isDefault: boolean };
@@ -272,7 +275,7 @@ export async function placeOrder(
     });
 
     if (!restaurant) throw new AppError('Restaurant not found.', 404, 'RESTAURANT_NOT_FOUND');
-    if (!restaurant.isOpen || !isRestaurantOpen(restaurant.operatingHours)) {
+    if (!restaurant.isOpen || !isRestaurantOpen(restaurant.operatingHours, restaurant.isOpen)) {
       throw new AppError('Restaurant is currently closed or outside operating hours.', 400, 'RESTAURANT_CLOSED');
     }
 
@@ -618,6 +621,9 @@ export async function reorder(
 ): Promise<void> {
   try {
     const userId = req.user!.id;
+    if (req.user!.role !== 'CUSTOMER') {
+      throw new AppError('Restaurant owners and administrators are not allowed to place orders.', 403, 'ORDER_RESTRICTED');
+    }
     const orderId = req.params.orderId as string;
 
     const previousOrder = await prisma.order.findFirst({

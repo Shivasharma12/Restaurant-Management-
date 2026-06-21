@@ -273,7 +273,7 @@ export function CartDrawer({ open, onClose, restaurantSlug, tableNumber, themeCo
 
                 <button
                   onClick={handleCheckout}
-                  className="w-full py-4 rounded-2xl text-white font-bold text-base flex items-center justify-between px-5"
+                  className="w-[calc(100%-3.5rem)] mr-14 py-4 rounded-2xl text-white font-bold text-base flex items-center justify-between px-5"
                   style={{ background: `linear-gradient(135deg, ${themeColor}, #F48C06)` }}
                 >
                   <span>Proceed to Checkout</span>

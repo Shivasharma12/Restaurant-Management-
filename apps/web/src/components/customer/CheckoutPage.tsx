@@ -4,9 +4,9 @@ import { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, CreditCard, Banknote, Wallet, MapPin, User, Phone, Loader2, Plus, PlusCircle, Check, Home, Briefcase } from 'lucide-react';
+import { ChevronLeft, CreditCard, Banknote, Wallet, MapPin, User, Phone, Loader2, Plus, PlusCircle, Check, Home, Briefcase, Lock, X, Smartphone, Building } from 'lucide-react';
 import { useCartStore } from '@/store/cart.store';
 import { useAuthStore } from '@/store/auth.store';
 import api from '@/lib/api';
@@ -62,7 +62,7 @@ interface CheckoutPageProps {
 
 export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps) {
   const router = useRouter();
-  const { user: rawUser, loginRestaurantSlug } = useAuthStore();
+  const { user: rawUser, loginRestaurantSlug, logout } = useAuthStore();
 
   const activeUser = useMemo(() => {
     if (!rawUser) return null;
@@ -95,6 +95,49 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
   }, [restaurant, hasDelivery]);
 
   const [manualTableNumber, setManualTableNumber] = useState(tableNumber || '');
+
+  // Mock Payment Modal state
+  const [showMockPaymentModal, setShowMockPaymentModal] = useState(false);
+  const [mockPaymentData, setMockPaymentData] = useState<{
+    orderId: string;
+    razorpayOrderId: string;
+    amount: number;
+    customerName: string;
+    customerPhone: string;
+  } | null>(null);
+  const [mockPaymentMethod, setMockPaymentMethod] = useState<'card' | 'upi' | 'netbanking'>('card');
+  const [isProcessingMockPayment, setIsProcessingMockPayment] = useState(false);
+  const [mockCardNumber, setMockCardNumber] = useState('');
+  const [mockCardExpiry, setMockCardExpiry] = useState('');
+  const [mockCardCVV, setMockCardCVV] = useState('');
+  const [mockCardName, setMockCardName] = useState('');
+  const [mockUPIId, setMockUPIId] = useState('');
+  const [selectedBank, setSelectedBank] = useState('');
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = (matches && matches[0]) || '';
+    const parts = [];
+
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+
+    if (parts.length > 0) {
+      return parts.join(' ');
+    } else {
+      return v;
+    }
+  };
+
+  const formatExpiry = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) {
+      return `${v.slice(0, 2)}/${v.slice(2, 4)}`;
+    }
+    return v;
+  };
 
   // Address queries & state
   const { data: addressesData, refetch: refetchAddresses } = useQuery({
@@ -192,20 +235,8 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
 
     // Handle mock payment simulation for development/unconfigured environments
     if (razorpayOrderId.startsWith('order_mock_') || !key || key.includes('your_key_id')) {
-      toast.info('Simulating Razorpay payment in development mode...');
-      try {
-        await api.post('/orders/verify-payment', {
-          orderId,
-          razorpayOrderId: razorpayOrderId,
-          razorpayPaymentId: `pay_mock_${Math.random().toString(36).substring(2, 15)}`,
-          razorpaySignature: 'mock_signature',
-        });
-        clearCart();
-        toast.success('Payment successful! 🎉 (Mocked)');
-        router.push(`/r/${restaurantSlug}/order/${orderId}`);
-      } catch {
-        toast.error('Payment verification failed (Mocked).');
-      }
+      setMockPaymentData({ orderId, razorpayOrderId, amount, customerName, customerPhone });
+      setShowMockPaymentModal(true);
       return;
     }
 
@@ -246,6 +277,28 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
     };
 
     new window.Razorpay(options).open();
+  };
+
+  const handleConfirmMockPayment = async () => {
+    if (!mockPaymentData) return;
+    setIsProcessingMockPayment(true);
+    try {
+      await api.post('/orders/verify-payment', {
+        orderId: mockPaymentData.orderId,
+        razorpayOrderId: mockPaymentData.razorpayOrderId,
+        razorpayPaymentId: `pay_mock_${Math.random().toString(36).substring(2, 15)}`,
+        razorpaySignature: 'mock_signature',
+      });
+      clearCart();
+      toast.success('Payment successful! 🎉 (Simulated)');
+      setShowMockPaymentModal(false);
+      setMockPaymentData(null);
+      router.push(`/r/${restaurantSlug}/order/${mockPaymentData.orderId}`);
+    } catch {
+      toast.error('Payment verification failed. Please try again.');
+    } finally {
+      setIsProcessingMockPayment(false);
+    }
   };
 
   const onGuestSubmit = async (formData: GuestForm) => {
@@ -609,6 +662,35 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
               Don't have an account? <Link href={`/register?restaurant=${restaurantSlug}`} className="text-primary hover:underline font-semibold">Sign up</Link>
             </p>
           </div>
+        ) : activeUser && activeUser.role !== 'CUSTOMER' ? (
+          <div className="bg-card border border-border rounded-2xl p-6 text-center space-y-4 shadow-xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 via-transparent to-transparent pointer-events-none" />
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto text-red-500 text-2xl">
+              🚫
+            </div>
+            <h2 className="font-display font-bold text-lg text-foreground">Ordering Restricted</h2>
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto leading-relaxed">
+              You are logged in as a <strong>{activeUser.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Restaurant Owner'}</strong>. Owners and administrators are not allowed to place orders.
+            </p>
+            <div className="pt-2 flex flex-col gap-2">
+              <Link
+                href={activeUser.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/owner/dashboard'}
+                className="w-full py-3.5 bg-primary hover:bg-primary/95 text-white font-semibold rounded-xl text-center shadow-md transition-all active:scale-95 text-sm"
+              >
+                Back to Dashboard
+              </Link>
+              <button
+                onClick={() => {
+                  logout();
+                  toast.success('Logged out successfully');
+                  router.push(`/login?restaurant=${restaurantSlug}`);
+                }}
+                className="w-full py-3.5 bg-muted hover:bg-muted/80 text-foreground font-semibold rounded-xl text-center transition-all active:scale-95 text-sm"
+              >
+                Log Out & Use Customer Account
+              </button>
+            </div>
+          </div>
         ) : activeUser ? (
           <div className="bg-card border border-border rounded-2xl p-4">
             <h2 className="font-display font-semibold mb-3">Your Details</h2>
@@ -706,6 +788,263 @@ export function CheckoutPage({ restaurantSlug, tableNumber }: CheckoutPageProps)
           </form>
         )}
       </div>
+
+      {/* Mock Payment Modal */}
+      <AnimatePresence>
+        {showMockPaymentModal && mockPaymentData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                if (!isProcessingMockPayment) {
+                  setShowMockPaymentModal(false);
+                  toast.error('Payment cancelled');
+                }
+              }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+
+            {/* Modal Body */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden relative z-10"
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-orange-500 to-amber-500 text-white p-6 relative">
+                <button
+                  type="button"
+                  disabled={isProcessingMockPayment}
+                  onClick={() => {
+                    setShowMockPaymentModal(false);
+                    toast.error('Payment cancelled');
+                  }}
+                  className="absolute top-4 right-4 p-1.5 rounded-full bg-white/20 hover:bg-white/30 transition-colors disabled:opacity-50"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    <Lock className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-xs font-bold tracking-wider uppercase opacity-90">Secure Checkout</span>
+                </div>
+                <h3 className="font-display font-bold text-xl">Online Payment Gateway</h3>
+                <p className="text-xs opacity-75 mt-1">Simulated transaction for Development Mode</p>
+              </div>
+
+              {/* Order Info */}
+              <div className="p-6 border-b border-border bg-muted/30 flex justify-between items-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">Amount to Pay</p>
+                  <p className="font-display font-extrabold text-2xl text-foreground font-mono">₹{mockPaymentData.amount.toFixed(2)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] bg-primary/10 text-primary px-2.5 py-1 rounded-full font-bold inline-block border border-primary/20">
+                    Order ID: #{mockPaymentData.orderId.slice(-6).toUpperCase()}
+                  </p>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex border-b border-border p-2 bg-muted/10">
+                <button
+                  type="button"
+                  onClick={() => setMockPaymentMethod('card')}
+                  className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    mockPaymentMethod === 'card'
+                      ? 'bg-card text-primary shadow-sm border border-border'
+                      : 'text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Card
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMockPaymentMethod('upi')}
+                  className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    mockPaymentMethod === 'upi'
+                      ? 'bg-card text-primary shadow-sm border border-border'
+                      : 'text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <Smartphone className="w-4 h-4" />
+                  UPI
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMockPaymentMethod('netbanking')}
+                  className={`flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    mockPaymentMethod === 'netbanking'
+                      ? 'bg-card text-primary shadow-sm border border-border'
+                      : 'text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <Building className="w-4 h-4" />
+                  Net Banking
+                </button>
+              </div>
+
+              {/* Content area */}
+              <div className="p-6 space-y-4 min-h-[180px]">
+                {mockPaymentMethod === 'card' && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Card Number</label>
+                      <input
+                        type="text"
+                        placeholder="4111 2222 3333 4444"
+                        maxLength={19}
+                        value={mockCardNumber}
+                        onChange={(e) => setMockCardNumber(formatCardNumber(e.target.value))}
+                        className="w-full px-3.5 py-2.5 bg-muted rounded-xl text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Expiry Date</label>
+                        <input
+                          type="text"
+                          placeholder="MM/YY"
+                          maxLength={5}
+                          value={mockCardExpiry}
+                          onChange={(e) => setMockCardExpiry(formatExpiry(e.target.value))}
+                          className="w-full px-3.5 py-2.5 bg-muted rounded-xl text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">CVV</label>
+                        <input
+                          type="password"
+                          placeholder="•••"
+                          maxLength={3}
+                          value={mockCardCVV}
+                          onChange={(e) => setMockCardCVV(e.target.value.replace(/[^0-9]/g, ''))}
+                          className="w-full px-3.5 py-2.5 bg-muted rounded-xl text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Card Holder Name</label>
+                      <input
+                        type="text"
+                        placeholder={mockPaymentData.customerName}
+                        value={mockCardName}
+                        onChange={(e) => setMockCardName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-muted rounded-xl text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {mockPaymentMethod === 'upi' && (
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">UPI ID / VPA</label>
+                      <input
+                        type="text"
+                        placeholder="username@bank"
+                        value={mockUPIId}
+                        onChange={(e) => setMockUPIId(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-muted rounded-xl text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Popular Handles</span>
+                      <div className="flex flex-wrap gap-2">
+                        {['@okhdfcbank', '@okaxis', '@okicici', '@paytm'].map((handle) => (
+                          <button
+                            type="button"
+                            key={handle}
+                            onClick={() => {
+                              const username = mockUPIId.split('@')[0] || 'customer';
+                              setMockUPIId(`${username}${handle}`);
+                            }}
+                            className="px-3 py-1.5 rounded-lg border border-border hover:border-primary text-xs bg-muted/50 hover:bg-primary/5 text-foreground transition-all font-mono"
+                          >
+                            {handle}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {mockPaymentMethod === 'netbanking' && (
+                  <div className="space-y-3">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">Popular Banks</span>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {[
+                        { id: 'sbi', name: 'State Bank of India', short: 'SBI' },
+                        { id: 'hdfc', name: 'HDFC Bank', short: 'HDFC' },
+                        { id: 'icici', name: 'ICICI Bank', short: 'ICICI' },
+                        { id: 'axis', name: 'Axis Bank', short: 'Axis' },
+                      ].map((bank) => (
+                        <button
+                          type="button"
+                          key={bank.id}
+                          onClick={() => setSelectedBank(bank.id)}
+                          className={`p-3 rounded-xl border text-left flex items-center justify-between transition-all ${
+                            selectedBank === bank.id
+                              ? 'border-primary bg-primary/5 text-primary'
+                              : 'border-border hover:bg-muted/50 text-foreground'
+                          }`}
+                        >
+                          <span className="text-xs font-semibold">{bank.name}</span>
+                          {selectedBank === bank.id && (
+                            <Check className="w-3.5 h-3.5 text-primary" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Secure footer bar */}
+              <div className="px-6 py-3 bg-muted/20 border-t border-border flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground font-medium">
+                <span>🔒 Secure 256-bit SSL encrypted simulation</span>
+              </div>
+
+              {/* Actions */}
+              <div className="p-6 pt-4 border-t border-border flex gap-3 bg-muted/10">
+                <button
+                  type="button"
+                  disabled={isProcessingMockPayment}
+                  onClick={() => {
+                    setShowMockPaymentModal(false);
+                    toast.error('Payment cancelled');
+                  }}
+                  className="flex-1 py-3 rounded-xl border border-border font-semibold text-sm hover:bg-muted transition-colors disabled:opacity-50 text-foreground"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingMockPayment}
+                  onClick={handleConfirmMockPayment}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-semibold text-sm transition-all active:scale-95 disabled:opacity-60 flex items-center justify-center gap-1.5 shadow-lg shadow-orange-500/20"
+                >
+                  {isProcessingMockPayment ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    `Pay ₹${mockPaymentData.amount.toFixed(0)}`
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
-import app from './app';
+import app, { allowedOrigins } from './app';
 import { initializeSocketService } from './services/socket.service';
 import { logger } from './utils/logger';
 import { connectRedis, isRedisReady } from './services/redis.service';
@@ -13,7 +13,8 @@ async function bootstrap() {
   try {
     // Test DB connection with retry loop
     let dbConnected = false;
-    let retries = 5;
+    const isDev = process.env.NODE_ENV !== 'production';
+    let retries = isDev ? 100 : 5; // Retry up to 100 times (~3.3 minutes) in dev to allow postgres container to boot
     while (retries > 0 && !dbConnected) {
       try {
         await prisma.$connect();
@@ -44,7 +45,18 @@ async function bootstrap() {
     // Initialize Socket.io
     const io = new SocketIOServer(httpServer, {
       cors: {
-        origin: process.env.CLIENT_URL ?? 'http://localhost:3000',
+        origin: (origin, callback) => {
+          if (!origin) return callback(null, true);
+          const normalizedOrigin = origin.replace(/\/$/, '');
+          if (
+            allowedOrigins.includes(normalizedOrigin) ||
+            normalizedOrigin.endsWith('.up.railway.app') ||
+            process.env.NODE_ENV !== 'production'
+          ) {
+            return callback(null, true);
+          }
+          callback(new Error('CORS: origin not allowed by Socket.io'));
+        },
         methods: ['GET', 'POST'],
         credentials: true,
       },

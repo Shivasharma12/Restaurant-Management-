@@ -29,7 +29,7 @@ app.use(
 );
 
 // ── CORS ─────────────────────────────────────────────────────
-const allowedOrigins = [
+export const allowedOrigins = [
   process.env.CLIENT_URL?.replace(/\/$/, ''),
   'http://localhost:3000',
   'http://localhost:3001',

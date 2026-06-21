@@ -324,7 +324,7 @@ export function RestaurantMenuPage({ slug, tableNumber }: RestaurantMenuPageProp
       </div>
 
       {/* AI Recommendations (logged-in only) */}
-      {activeUser && (
+      {activeUser && activeUser.role === 'CUSTOMER' && (
         <div className="px-4 md:px-8 mb-4">
           <AIRecommendations restaurantId={restaurant.id} themeColor={themeColor} />
         </div>
@@ -428,7 +428,7 @@ export function RestaurantMenuPage({ slug, tableNumber }: RestaurantMenuPageProp
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-6 left-4 right-4 z-30"
+            className="fixed bottom-6 left-4 right-20 z-30"
           >
             <button
               onClick={() => setCartOpen(true)}

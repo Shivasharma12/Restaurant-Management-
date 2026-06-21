@@ -68,6 +68,11 @@ export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug }:
       return;
     }
 
+    if (rawUser && rawUser.role !== 'CUSTOMER') {
+      toast.error('Restaurant owners and admins cannot order food.');
+      return;
+    }
+
     addItem({
       menuItemId: item.id,
       name: item.name,
@@ -213,6 +218,10 @@ export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug }:
               <span className="w-6 text-center text-sm font-semibold">{quantity}</span>
               <button
                 onClick={() => {
+                  if (rawUser && rawUser.role !== 'CUSTOMER') {
+                    toast.error('Restaurant owners and admins cannot order food.');
+                    return;
+                  }
                   if (item.addOns.length > 0) {
                     setShowCustomize(true);
                   } else {
@@ -239,6 +248,10 @@ export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug }:
             <button
               onClick={() => {
                 if (!item.isAvailable) return;
+                if (rawUser && rawUser.role !== 'CUSTOMER') {
+                  toast.error('Restaurant owners and admins cannot order food.');
+                  return;
+                }
                 if (item.addOns.length > 0 || item.variants.length > 1) {
                   setShowCustomize(true);
                 } else {

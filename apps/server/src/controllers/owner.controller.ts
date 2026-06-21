@@ -9,6 +9,7 @@ import type { AuthenticatedRequest } from '../middlewares/auth.middleware';
 async function getOwnerRestaurant(ownerId: string) {
   const restaurant = await prisma.restaurant.findFirst({
     where: { ownerId, deletedAt: null },
+    orderBy: { createdAt: 'asc' },
   });
   if (!restaurant) throw new AppError('Restaurant not found.', 404, 'RESTAURANT_NOT_FOUND');
   return restaurant;
@@ -113,6 +114,7 @@ export async function toggleRestaurant(req: AuthenticatedRequest, res: Response,
       where: { id: restaurant.id },
       data: { isOpen },
     });
+    await cacheDelPattern(`menu:${restaurant.slug}*`);
     res.json({
       success: true,
       data: { isOpen: updated.isOpen },

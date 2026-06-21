@@ -23,6 +23,10 @@ const nextConfig: NextConfig = {
     },
   },
 
+  devIndicators: {
+    appIsrStatus: false,
+  },
+
   // Disable webpack filesystem cache to prevent stale/corrupted pack.gz files
   // This is the root cause of the ENOENT vendor-chunks error on Windows with OneDrive
   webpack: (config, { dev }) => {

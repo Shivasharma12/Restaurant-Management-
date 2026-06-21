@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, UtensilsCrossed, ShoppingBag, Tag, BarChart3, Settings,
@@ -29,6 +29,7 @@ const NAV_ITEMS = [
 export function OwnerDashboard() {
   const { user, logout } = useAuthStore();
   const router = useRouter();
+  const qc = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
@@ -63,6 +64,7 @@ export function OwnerDashboard() {
     try {
       await api.patch('/owner/restaurant/toggle', { isOpen: !data.restaurant.isOpen });
       toast.success(`Restaurant is now ${!data.restaurant.isOpen ? 'OPEN' : 'CLOSED'}`);
+      qc.invalidateQueries({ queryKey: ['owner-dashboard'] });
     } catch {
       toast.error('Failed to update restaurant status');
     }

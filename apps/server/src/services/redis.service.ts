@@ -2,10 +2,11 @@ import Redis from 'ioredis';
 import { logger } from '../utils/logger';
 
 export const redisClient = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null,
   lazyConnect: true,
   retryStrategy: (times) => {
-    if (times > 3) {
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (!isDev && times > 3) {
       logger.warn('Redis: max retries reached. Stopping reconnection attempts.');
       return null;
     }
@@ -22,31 +23,45 @@ export function isRedisReady(): boolean {
 }
 
 export async function connectRedis(): Promise<Redis> {
+  if (redisClient.status === 'ready') {
+    return redisClient;
+  }
+
   try {
     if (redisClient.status === 'wait') {
-      await redisClient.connect();
-    } else if (redisClient.status === 'connecting') {
-      await new Promise<void>((resolve, reject) => {
-        const onReady = () => {
-          redisClient.off('close', onClose);
-          redisClient.off('error', onError);
-          resolve();
-        };
-        const onClose = () => {
-          redisClient.off('ready', onReady);
-          redisClient.off('error', onError);
-          reject(new Error('Redis connection closed while connecting'));
-        };
-        const onError = (err: Error) => {
-          redisClient.off('ready', onReady);
-          redisClient.off('close', onClose);
-          reject(err);
-        };
-        redisClient.once('ready', onReady);
-        redisClient.once('close', onClose);
-        redisClient.once('error', onError);
-      });
+      redisClient.connect().catch(() => {});
     }
+
+    await new Promise<void>((resolve, reject) => {
+      if (redisClient.status === 'ready') {
+        return resolve();
+      }
+
+      const onReady = () => {
+        cleanup();
+        resolve();
+      };
+
+      const onClose = () => {
+        cleanup();
+        reject(new Error('Redis connection closed'));
+      };
+
+      const onError = (err: Error) => {
+        cleanup();
+        reject(err);
+      };
+
+      const cleanup = () => {
+        redisClient.off('ready', onReady);
+        redisClient.off('close', onClose);
+        redisClient.off('error', onError);
+      };
+
+      redisClient.on('ready', onReady);
+      redisClient.on('close', onClose);
+      redisClient.on('error', onError);
+    });
   } catch (error) {
     logger.warn('⚠️ Redis connection failed. Falling back to in-memory store/cache.');
   }
