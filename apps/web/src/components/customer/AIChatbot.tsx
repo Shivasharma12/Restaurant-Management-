@@ -18,6 +18,36 @@ interface AIChatbotProps {
   onClose: () => void;
 }
 
+function renderFormattedMessage(content: string) {
+  if (!content) return null;
+  const lines = content.split('\n');
+  return (
+    <div className="space-y-1">
+      {lines.map((line, lineIdx) => {
+        if (!line.trim()) {
+          return <div key={lineIdx} className="h-1" />;
+        }
+        const parts = line.split(/(\*\*.*?\*\*)/g);
+        return (
+          <p key={lineIdx} className="leading-relaxed">
+            {parts.map((part, partIdx) => {
+              if (part.startsWith('**') && part.endsWith('**') && part.length >= 4) {
+                const boldText = part.slice(2, -2);
+                return (
+                  <strong key={partIdx} className="font-bold">
+                    {boldText}
+                  </strong>
+                );
+              }
+              return <span key={partIdx}>{part}</span>;
+            })}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export function AIChatbot({ restaurantId, restaurantName, themeColor, onClose }: AIChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -116,13 +146,13 @@ export function AIChatbot({ restaurantId, restaurantName, themeColor, onClose }:
                   <User className="w-3.5 h-3.5 text-muted-foreground" />
                 )}
               </div>
-              <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
+              <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'text-white rounded-tr-none'
                   : 'bg-muted text-foreground rounded-tl-none'
               }`}
               style={msg.role === 'user' ? { backgroundColor: themeColor } : {}}>
-                {msg.content}
+                {renderFormattedMessage(msg.content)}
               </div>
             </div>
           ))}
