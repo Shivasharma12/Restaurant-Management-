@@ -1,36 +1,50 @@
 import nodemailer from 'nodemailer';
 import { logger } from '../utils/logger';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST ?? 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT ?? '587', 10),
-  secure: parseInt(process.env.SMTP_PORT ?? '587', 10) === 465,
-  pool: true,
-  maxConnections: 3,
-  maxMessages: 100,
-  rateLimit: 5,
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 15000,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false,
-  },
-});
+function getTransporter() {
+  const host = process.env.SMTP_HOST ?? 'smtp.gmail.com';
+  const port = parseInt(process.env.SMTP_PORT ?? '587', 10);
+  const user = process.env.SMTP_USER;
+  const pass = process.env.SMTP_PASS;
 
-const FROM = `"${process.env.SMTP_FROM_NAME ?? 'EZ- Restaurant'}" <${
-  process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'shivabhardwaj4545@gmail.com'
-}>`;
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false },
+  });
+}
+
+function getFromAddress(): string {
+  const name = process.env.SMTP_FROM_NAME ?? 'EZ- Restaurant';
+  const email = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'shivabhardwaj4545@gmail.com';
+  return `"${name}" <${email}>`;
+}
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+  const cleanedTo = to.includes(':') ? to.split(':')[1].trim() : to.trim();
+  if (!cleanedTo || !cleanedTo.includes('@')) {
+    logger.error(`❌ Cannot send email: invalid address "${to}"`);
+    return;
+  }
   try {
-    const info = await transporter.sendMail({ from: FROM, to, subject, html });
-    logger.info(`✅ Email sent to ${to}: ${subject} (Message ID: ${info.messageId})`);
+    const transporter = getTransporter();
+    const info = await transporter.sendMail({
+      from: getFromAddress(),
+      to: cleanedTo,
+      subject,
+      html,
+    });
+    logger.info(`✅ Email sent to ${cleanedTo}: ${subject} (Message ID: ${info.messageId})`);
   } catch (error: any) {
-    logger.error(`❌ Failed to send email to ${to}:`, error.message || error);
+    logger.error(`❌ Failed to send email to ${cleanedTo}:`, error.message || error);
     throw new Error(`Email delivery failed: ${error.message || 'SMTP error'}`);
   }
 }

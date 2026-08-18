@@ -545,17 +545,33 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
       throw new AppError('Subject and email content are required.', 400, 'BAD_REQUEST');
     }
 
-    const whereClause: any = { deletedAt: null };
-    if (targetRole === 'ALL_OWNERS') {
-      whereClause.role = 'RESTAURANT_OWNER';
-    } else if (targetRole === 'ALL_CUSTOMERS') {
-      whereClause.role = 'CUSTOMER';
-    }
+    let users: Array<{ id: string; email: string }> = [];
 
-    const users = await prisma.user.findMany({
-      where: whereClause,
-      select: { id: true, email: true },
-    });
+    if (targetRole === 'ALL_OWNERS') {
+      const ownerUsers = await prisma.user.findMany({
+        where: { role: 'RESTAURANT_OWNER', deletedAt: null },
+        select: { id: true, email: true },
+      });
+      const restaurants = await prisma.restaurant.findMany({
+        where: { deletedAt: null },
+        select: { owner: { select: { id: true, email: true } } },
+      });
+      const restOwnerUsers = restaurants.map((r) => r.owner).filter(Boolean) as Array<{ id: string; email: string }>;
+      
+      const map = new Map<string, { id: string; email: string }>();
+      [...ownerUsers, ...restOwnerUsers].forEach((u) => { if (u.id) map.set(u.id, u); });
+      users = Array.from(map.values());
+    } else if (targetRole === 'ALL_CUSTOMERS') {
+      users = await prisma.user.findMany({
+        where: { role: 'CUSTOMER', deletedAt: null },
+        select: { id: true, email: true },
+      });
+    } else {
+      users = await prisma.user.findMany({
+        where: { deletedAt: null },
+        select: { id: true, email: true },
+      });
+    }
 
     for (const u of users) {
       if (u.id !== adminUserId) {
@@ -565,7 +581,7 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
             receiverId: u.id,
             message: `📧 [MASS EMAIL ANNOUNCEMENT]\nSubject: ${subject}\n\n${message}`,
           },
-        });
+        }).catch((err) => logger.warn('Failed to create direct message for broadcast:', err));
       }
 
       emitNotification(u.id, {
