@@ -14,6 +14,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { WaiterBell } from '@/components/owner/WaiterBell';
 import { getImageUrl } from '@/lib/image';
+import { DAYS_OF_WEEK } from '@/utils/operatingHours';
 import QRCode from 'qrcode';
 
 const NAV_ITEMS = [
@@ -497,7 +498,7 @@ export function OwnerSettingsPage() {
                       Operating Hours (Weekly Schedule)
                     </label>
                     <div className="space-y-3 bg-muted/10 border border-border rounded-2xl p-4">
-                      {Object.keys(operatingHours).map((day) => {
+                      {DAYS_OF_WEEK.map((day) => {
                         const dayHours = operatingHours[day as keyof OperatingHours];
                         return (
                           <div key={day} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2 border-b border-border/50 last:border-b-0">

@@ -6,6 +6,7 @@ import { emitOrderStatusUpdate, emitNotification, emitUserLoyaltyUpdate, emitPay
 import { cacheDelPattern, cacheSet } from '../services/redis.service';
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { generateTableSignature } from '../utils/tableSignature';
+import { sortOperatingHours } from '../utils/operatingHours';
 
 async function getOwnerRestaurant(ownerId: string) {
   const restaurant = await prisma.restaurant.findFirst({
@@ -141,6 +142,9 @@ export async function getDashboard(req: AuthenticatedRequest, res: Response, nex
 export async function getRestaurant(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const restaurant = await getOwnerRestaurant(req.user!.id);
+    if (restaurant.operatingHours) {
+      restaurant.operatingHours = sortOperatingHours(restaurant.operatingHours);
+    }
     res.json({ success: true, data: { restaurant } });
   } catch (error) { next(error); }
 }
@@ -149,6 +153,10 @@ export async function updateRestaurant(req: AuthenticatedRequest, res: Response,
   try {
     const restaurant = await getOwnerRestaurant(req.user!.id);
     const body = { ...req.body } as Record<string, any>;
+
+    if (body.operatingHours) {
+      body.operatingHours = sortOperatingHours(body.operatingHours);
+    }
 
     if (body.slug && typeof body.slug === 'string') {
       const sanitizedSlug = body.slug
@@ -178,6 +186,10 @@ export async function updateRestaurant(req: AuthenticatedRequest, res: Response,
       where: { id: restaurant.id },
       data: body,
     });
+
+    if (updated.operatingHours) {
+      updated.operatingHours = sortOperatingHours(updated.operatingHours);
+    }
 
     await cacheDelPattern(`menu:${restaurant.slug}*`);
     if (updated.slug !== restaurant.slug) {

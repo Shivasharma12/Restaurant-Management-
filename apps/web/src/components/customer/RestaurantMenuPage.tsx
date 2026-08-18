@@ -637,9 +637,9 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
   const restaurantBanner = isPreview && searchParams?.banner !== undefined ? (searchParams.banner || null) : restaurant.banner;
 
   return (
-    <div className="min-h-screen bg-background pb-24 relative">
+    <div className="min-h-screen bg-background pb-24 relative w-full max-w-full overflow-x-hidden min-w-0">
       {/* Floating Navigation Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent gap-2 min-w-0">
+      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent gap-2 min-w-0 max-w-full">
         <div className="flex items-center gap-1.5 text-white drop-shadow-md shrink-0 select-none">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-md">
             <QrCode className="w-4 h-4 text-white" />
@@ -757,15 +757,15 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
       </div>
 
       {/* Restaurant Header Info */}
-      <div className="px-4 md:px-8 -mt-16 relative z-10 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
+      <div className="px-4 md:px-8 -mt-16 relative z-10 mb-6 min-w-0 max-w-full">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4 min-w-0">
           <div className="flex items-end gap-3.5 min-w-0 flex-1">
             {restaurantLogo ? (
-              <div className="w-18 h-18 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-4 border-background shadow-xl shrink-0">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-4 border-background shadow-xl shrink-0">
                 <img src={restaurantLogo} alt={restaurantName || 'Logo'} className="w-full h-full object-cover" />
               </div>
             ) : (
-              <div className="w-18 h-18 sm:w-24 sm:h-24 rounded-2xl border-4 border-background shadow-xl shrink-0 flex items-center justify-center text-2xl sm:text-3xl text-white font-bold"
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl border-4 border-background shadow-xl shrink-0 flex items-center justify-center text-2xl sm:text-3xl text-white font-bold"
                 style={{ backgroundColor: themeColor }}>
                 {restaurantName?.[0] ?? '🍽️'}
               </div>

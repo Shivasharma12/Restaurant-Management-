@@ -8,6 +8,7 @@ import { connectRedis, isRedisReady } from './services/redis.service';
 import { prisma } from './lib/prisma';
 
 import { ensureDatabaseSeeded } from './utils/autoSeed';
+import { startKeepAliveJob } from './jobs/keepAlive.job';
 
 // Gracefully handle Redis disconnections / connection failures in production without crashing the process
 process.on('unhandledRejection', (reason: any) => {
@@ -67,6 +68,7 @@ async function bootstrap() {
       logger.info(`🚀 Server running on http://${HOST}:${PORT}`);
       logger.info(`📚 API docs: http://${HOST}:${PORT}/api-docs`);
       logger.info(`🌍 Environment: ${process.env.NODE_ENV ?? 'development'}`);
+      startKeepAliveJob();
     });
 
     // Initialize database & redis in parallel after server is already listening

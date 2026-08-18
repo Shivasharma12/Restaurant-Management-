@@ -6,6 +6,16 @@ export type OperatingHoursDay = {
 
 export type OperatingHours = Record<string, OperatingHoursDay>;
 
+export const DAYS_OF_WEEK = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+] as const;
+
 /**
  * Checks if a restaurant is currently open based on its operating hours.
  * 
