@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
 export const guestCheckoutSchema = z.object({
-  guestName: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  guestPhone: z.string().regex(/^[6-9]\d{9}$/, 'Enter a valid 10-digit Indian mobile number'),
+  guestName: z.string().optional().or(z.literal('')),
+  guestPhone: z.string().optional().or(z.literal('')),
   tableNumber: z.string().optional(),
+  tableToken: z.string().optional(),
   paymentMethod: z.enum(['RAZORPAY', 'COD', 'PAY_TO_WAITER']),
+  isDirect: z.boolean().optional(),
   couponCode: z.string().optional(),
   restaurantSlug: z.string().min(1, 'Restaurant slug is required'),
   cartItems: z.array(
