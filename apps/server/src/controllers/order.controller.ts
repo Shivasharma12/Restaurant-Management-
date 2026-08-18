@@ -145,9 +145,10 @@ export async function placeGuestOrder(
       throw new AppError('Restaurant is currently closed or outside operating hours.', 400, 'RESTAURANT_CLOSED');
     }
 
-    // Verify table number signature to prevent table spoofing (bypassed in development or if disabled)
-    if (tableNumber && tableNumber.trim() !== '' && process.env.NODE_ENV !== 'development' && process.env.DISABLE_TABLE_SIGNATURE !== 'true') {
-      if (!tableToken || typeof tableToken !== 'string' || !verifyTableSignature(restaurant.id, tableNumber.trim(), tableToken)) {
+    // Verify table number signature ONLY if a tableToken is provided (table-specific QR code).
+    // For General QR codes or manual entry without tableToken, signature check is skipped so customers can enter table number manually.
+    if (tableToken && typeof tableToken === 'string' && tableToken.trim() !== '' && process.env.DISABLE_TABLE_SIGNATURE !== 'true') {
+      if (!tableNumber || !verifyTableSignature(restaurant.id, tableNumber.trim(), tableToken)) {
         throw new AppError('Invalid table QR code signature. Please scan the QR code on your table.', 403, 'INVALID_TABLE_TOKEN');
       }
     }
@@ -292,9 +293,10 @@ export async function placeOrder(
       throw new AppError('Restaurant is currently closed or outside operating hours.', 400, 'RESTAURANT_CLOSED');
     }
 
-    // Verify table number signature to prevent table spoofing (bypassed in development or if disabled)
-    if (tableNumber && tableNumber.trim() !== '' && process.env.NODE_ENV !== 'development' && process.env.DISABLE_TABLE_SIGNATURE !== 'true') {
-      if (!tableToken || typeof tableToken !== 'string' || !verifyTableSignature(restaurant.id, tableNumber.trim(), tableToken)) {
+    // Verify table number signature ONLY if a tableToken is provided (table-specific QR code).
+    // For General QR codes or manual entry without tableToken, signature check is skipped so customers can enter table number manually.
+    if (tableToken && typeof tableToken === 'string' && tableToken.trim() !== '' && process.env.DISABLE_TABLE_SIGNATURE !== 'true') {
+      if (!tableNumber || !verifyTableSignature(restaurant.id, tableNumber.trim(), tableToken)) {
         throw new AppError('Invalid table QR code signature. Please scan the QR code on your table.', 403, 'INVALID_TABLE_TOKEN');
       }
     }

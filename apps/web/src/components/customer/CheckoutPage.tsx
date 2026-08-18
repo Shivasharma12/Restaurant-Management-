@@ -127,8 +127,19 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
       if (storedTable) {
         setManualTableNumber(storedTable);
       }
+    } else {
+      setManualTableNumber(tableNumber);
     }
   }, [tableNumber, restaurantSlug]);
+
+  const handleTableNumberChange = (val: string) => {
+    setManualTableNumber(val);
+    if (val.trim()) {
+      localStorage.setItem(`table_num_${restaurantSlug}`, val.trim());
+    } else {
+      localStorage.removeItem(`table_num_${restaurantSlug}`);
+    }
+  };
 
   // Mock Payment Modal state
   const [showMockPaymentModal, setShowMockPaymentModal] = useState(false);
@@ -423,6 +434,10 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
       toast.error('Your cart is empty');
       return;
     }
+    if (diningOption === 'DINE_IN' && (!manualTableNumber || !manualTableNumber.trim())) {
+      toast.error('Please enter your table number.');
+      return;
+    }
     setLoading(true);
     try {
       const token = tableToken || localStorage.getItem(`table_token_${restaurantSlug}`) || '';
@@ -476,6 +491,10 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
 
   const onUserOrder = async () => {
     if (items.length === 0) return;
+    if (diningOption === 'DINE_IN' && (!manualTableNumber || !manualTableNumber.trim())) {
+      toast.error('Please enter your table number.');
+      return;
+    }
     if (diningOption === 'DELIVERY' && !selectedAddressId) {
       toast.error('Please select or add a delivery address.');
       return;
@@ -1115,13 +1134,16 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
             </div>
             {diningOption === 'DINE_IN' && (
               <div className="mt-4">
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">Table Number</label>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 flex items-center justify-between">
+                  <span>Table Number <span className="text-red-500">*</span></span>
+                  {tableToken && <span className="text-[10px] text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full font-medium">✓ Scanned Table QR</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Enter Table Number (e.g. 5, A2)"
                   value={manualTableNumber}
-                  onChange={(e) => setManualTableNumber(e.target.value)}
-                  className="w-full px-3 py-2 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                  onChange={(e) => handleTableNumberChange(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                 />
               </div>
             )}
@@ -1168,12 +1190,15 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
 
             {diningOption === 'DINE_IN' && (
               <div>
-                <label className="text-sm font-medium mb-1.5 block">Table Number</label>
+                <label className="text-sm font-medium mb-1.5 flex items-center justify-between">
+                  <span>Table Number <span className="text-red-500">*</span></span>
+                  {tableToken && <span className="text-[10px] text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full font-medium">✓ Scanned Table QR</span>}
+                </label>
                 <input
                   type="text"
                   placeholder="Enter Table Number (e.g. 5, A2)"
                   value={manualTableNumber}
-                  onChange={(e) => setManualTableNumber(e.target.value)}
+                  onChange={(e) => handleTableNumberChange(e.target.value)}
                   className="w-full px-4 py-3 bg-muted rounded-xl text-sm border-0 focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                 />
               </div>

@@ -190,9 +190,11 @@ export async function callWaiter(
       throw new AppError('Restaurant not found', 404, 'RESTAURANT_NOT_FOUND');
     }
 
-    // Verify cryptographic signature of the table number (bypassed in development or if disabled)
-    if (process.env.NODE_ENV !== 'development' && process.env.DISABLE_TABLE_SIGNATURE !== 'true' && (!tableToken || typeof tableToken !== 'string' || !verifyTableSignature(restaurant.id, tableNumber.trim(), tableToken))) {
-      throw new AppError('Invalid table QR code signature. Please scan the QR code on your table.', 403, 'INVALID_TABLE_TOKEN');
+    // Verify cryptographic signature of the table number ONLY if a tableToken is provided
+    if (tableToken && typeof tableToken === 'string' && tableToken.trim() !== '' && process.env.DISABLE_TABLE_SIGNATURE !== 'true') {
+      if (!verifyTableSignature(restaurant.id, tableNumber.trim(), tableToken)) {
+        throw new AppError('Invalid table QR code signature. Please scan the QR code on your table.', 403, 'INVALID_TABLE_TOKEN');
+      }
     }
 
     // Emit real-time waiter call to the restaurant owner's socket room
