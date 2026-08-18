@@ -90,7 +90,18 @@ app.use(requestLogger);
 // ── Rate Limiting ──────────────────────────────────────────────
 app.use('/api', generalLimiter);
 
-// ── Health Check ──────────────────────────────────────────────
+// ── Health & Root Check ─────────────────────────────────────────
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    message: '🚀 EZ- Restaurant SaaS API Server is running live!',
+    version: '1.0.0',
+    documentation: '/api-docs',
+    health: '/health',
+    api: '/api/v1',
+  });
+});
+
 app.get('/health', (_req, res) => {
   res.json({
     success: true,
