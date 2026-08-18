@@ -2,10 +2,10 @@ import nodemailer from 'nodemailer';
 import { logger } from '../utils/logger';
 
 function getTransporter() {
-  const host = process.env.SMTP_HOST ?? 'smtp.gmail.com';
+  const host = (process.env.SMTP_HOST ?? 'smtp.gmail.com').trim();
   const port = parseInt(process.env.SMTP_PORT ?? '587', 10);
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  const user = (process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'shivabhardwaj4545@gmail.com').trim();
+  const pass = (process.env.SMTP_PASS ?? '').replace(/\s+/g, '').trim();
 
   return nodemailer.createTransport({
     host,
@@ -23,8 +23,8 @@ function getTransporter() {
 }
 
 function getFromAddress(): string {
-  const name = process.env.SMTP_FROM_NAME ?? 'EZ- Restaurant';
-  const email = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'shivabhardwaj4545@gmail.com';
+  const name = (process.env.SMTP_FROM_NAME ?? 'EZ- Restaurant').trim();
+  const email = (process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'shivabhardwaj4545@gmail.com').trim();
   return `"${name}" <${email}>`;
 }
 

@@ -557,9 +557,17 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
         select: { owner: { select: { id: true, email: true } } },
       });
       const restOwnerUsers = restaurants.map((r) => r.owner).filter(Boolean) as Array<{ id: string; email: string }>;
-      
+
       const map = new Map<string, { id: string; email: string }>();
-      [...ownerUsers, ...restOwnerUsers].forEach((u) => { if (u.id) map.set(u.id, u); });
+      [...ownerUsers, ...restOwnerUsers].forEach((u) => {
+        if (u && u.email) {
+          const clean = u.email.includes(':') ? u.email.split(':')[1] : u.email;
+          const normalized = clean.toLowerCase().trim();
+          if (normalized.includes('@') && normalized.includes('.')) {
+            map.set(normalized, { id: u.id, email: normalized });
+          }
+        }
+      });
       users = Array.from(map.values());
     } else if (targetRole === 'ALL_CUSTOMERS') {
       users = await prisma.user.findMany({
@@ -574,7 +582,7 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
     }
 
     for (const u of users) {
-      if (u.id !== adminUserId) {
+      if (u.id && u.id !== adminUserId) {
         await prisma.directMessage.create({
           data: {
             senderId: adminUserId,
@@ -584,12 +592,14 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
         }).catch((err) => logger.warn('Failed to create direct message for broadcast:', err));
       }
 
-      emitNotification(u.id, {
-        type: 'BROADCAST',
-        title: `📧 ${subject}`,
-        message,
-        createdAt: new Date().toISOString(),
-      });
+      if (u.id) {
+        emitNotification(u.id, {
+          type: 'BROADCAST',
+          title: `📧 ${subject}`,
+          message,
+          createdAt: new Date().toISOString(),
+        });
+      }
     }
 
     const recipientEmails = Array.from(
@@ -607,7 +617,7 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
     if (req.user?.email) {
       const reqEmail = req.user.email.includes(':') ? req.user.email.split(':')[1] : req.user.email;
       const normalizedReqEmail = reqEmail.toLowerCase().trim();
-      if (!recipientEmails.includes(normalizedReqEmail)) {
+      if (normalizedReqEmail && !recipientEmails.includes(normalizedReqEmail)) {
         recipientEmails.push(normalizedReqEmail);
       }
     }
@@ -615,7 +625,9 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
     if (adminSmtpEmail && !recipientEmails.includes(adminSmtpEmail)) {
       recipientEmails.push(adminSmtpEmail);
     }
-    
+
+    logger.info(`Sending broadcast email to ${recipientEmails.length} recipients: ${recipientEmails.join(', ')}`);
+
     // Dispatch emails asynchronously in the background so that the API request returns instantly
     sendBroadcastEmail(recipientEmails, subject, message, 'Super Admin Platform Announcement')
       .then((result) => {
@@ -627,7 +639,8 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
 
     res.json({
       success: true,
-      message: `Broadcast email dispatch initiated for ${recipientEmails.length} recipients in the background.`,
+      message: `Broadcast email dispatch initiated for ${recipientEmails.length} recipient(s) (${recipientEmails.join(', ')})!`,
+      data: { recipients: recipientEmails, count: recipientEmails.length },
     });
   } catch (error) { next(error); }
 }
