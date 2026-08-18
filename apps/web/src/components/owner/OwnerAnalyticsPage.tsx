@@ -44,6 +44,14 @@ export function OwnerAnalyticsPage() {
         revenueData: Array<{ date: string; revenue: number; orders: number }>;
         topItems: Array<{ name: string; quantity: number; revenue: number }>;
         reviewStats: { avgRating: number; totalReviews: number };
+        summaryStats?: {
+          todayRevenue: number;
+          todayOrders: number;
+          monthlyRevenue: number;
+          monthlyOrders: number;
+          todayHourlyAverage: number;
+        };
+        todayHourlyEarnings?: Array<{ hour: string; rawHour: number; revenue: number; orders: number }>;
       };
     },
   });
@@ -127,41 +135,69 @@ export function OwnerAnalyticsPage() {
 
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
           {/* KPI */}
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {[
-              { label: 'Total Revenue', value: `₹${totalRevenue.toFixed(0)}`, icon: DollarSign, color: 'text-green-600', bg: 'from-green-500/20 to-emerald-500/20', border: 'border-green-500/20' },
-              { label: 'Total Orders', value: totalOrders, icon: ShoppingBag, color: 'text-blue-600', bg: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/20' },
-              { label: 'Avg Rating', value: `${(data?.reviewStats.avgRating ?? 0).toFixed(1)} ★`, icon: Star, color: 'text-yellow-600', bg: 'from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/20' },
+              { label: "Today's Earnings", value: `₹${(data?.summaryStats?.todayRevenue ?? 0).toLocaleString('en-IN')}`, icon: DollarSign, color: 'text-green-600 dark:text-green-400', bg: 'from-green-500/20 to-emerald-500/20', border: 'border-green-500/20' },
+              { label: "Monthly Earnings", value: `₹${(data?.summaryStats?.monthlyRevenue ?? 0).toLocaleString('en-IN')}`, icon: TrendingUp, color: 'text-blue-600 dark:text-blue-400', bg: 'from-blue-500/20 to-cyan-500/20', border: 'border-blue-500/20' },
+              { label: "Today Hourly Avg", value: `₹${(data?.summaryStats?.todayHourlyAverage ?? 0).toFixed(0)}/hr`, icon: Calendar, color: 'text-purple-600 dark:text-purple-400', bg: 'from-purple-500/20 to-indigo-500/20', border: 'border-purple-500/20' },
+              { label: 'Period Revenue', value: `₹${totalRevenue.toLocaleString('en-IN')}`, icon: DollarSign, color: 'text-emerald-600 dark:text-emerald-400', bg: 'from-emerald-500/20 to-teal-500/20', border: 'border-emerald-500/20' },
+              { label: 'Period Orders', value: totalOrders, icon: ShoppingBag, color: 'text-orange-600 dark:text-orange-400', bg: 'from-orange-500/20 to-amber-500/20', border: 'border-orange-500/20' },
+              { label: 'Avg Rating', value: `${(data?.reviewStats.avgRating ?? 0).toFixed(1)} ★`, icon: Star, color: 'text-yellow-600 dark:text-yellow-400', bg: 'from-yellow-500/20 to-amber-500/20', border: 'border-yellow-500/20' },
             ].map((stat, i) => {
               const Icon = stat.icon;
               return (
-                <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}
-                  className={`bg-gradient-to-br ${stat.bg} border ${stat.border} rounded-2xl p-4`}>
+                <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+                  className={`bg-gradient-to-br ${stat.bg} border ${stat.border} rounded-2xl p-4 flex flex-col justify-between`}>
                   <Icon className={`w-5 h-5 ${stat.color} mb-2`} />
-                  <p className="font-display text-2xl font-bold">{isLoading ? '—' : stat.value}</p>
-                  <p className="text-muted-foreground text-xs mt-0.5">{stat.label}</p>
+                  <div>
+                    <p className="font-display text-xl font-bold">{isLoading ? '—' : stat.value}</p>
+                    <p className="text-muted-foreground text-xs mt-0.5">{stat.label}</p>
+                  </div>
                 </motion.div>
               );
             })}
           </div>
 
+          {/* Today's Hourly Earnings Chart */}
+          {data?.todayHourlyEarnings && data.todayHourlyEarnings.length > 0 && (
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+              <h2 className="font-display font-semibold mb-1">Today's Hourly Earnings</h2>
+              <p className="text-xs text-muted-foreground mb-4">Earnings breakdown for today (12 AM - 11 PM)</p>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={data.todayHourlyEarnings}>
+                  <defs>
+                    <linearGradient id="hourlyGradAnalytics" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={themeColor} stopOpacity={0.4} />
+                      <stop offset="95%" stopColor={themeColor} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="hour" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={2} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `₹${v}`} />
+                  <Tooltip formatter={(v: number) => [`₹${v}`, 'Earnings']} labelFormatter={(l: string) => `Time: ${l}`} />
+                  <Area type="monotone" dataKey="revenue" stroke={themeColor} strokeWidth={2.5} fill="url(#hourlyGradAnalytics)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
           {/* Revenue Chart */}
           <div className="bg-card border border-border rounded-2xl p-5">
-            <h2 className="font-display font-semibold mb-4">Revenue Over Time</h2>
+            <h2 className="font-display font-semibold mb-4">Revenue Over Time ({period === '7d' ? 'Last 7 Days' : 'Last 30 Days'})</h2>
             {data?.revenueData && data.revenueData.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
                 <AreaChart data={data.revenueData}>
                   <defs>
                     <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={themeColor} stopOpacity={0.3} />
-                      <stop offset="95%" stopColor={themeColor} stopOpacity={0} />
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `₹${v}`} />
                   <Tooltip formatter={(v: number) => [`₹${v}`, 'Revenue']} />
-                  <Area type="monotone" dataKey="revenue" stroke={themeColor} strokeWidth={2} fill="url(#revGrad)" />
+                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (

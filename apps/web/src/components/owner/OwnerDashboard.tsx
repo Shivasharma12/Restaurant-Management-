@@ -48,7 +48,17 @@ export function OwnerDashboard() {
       const response = await api.get('/owner/dashboard');
       return response.data.data as {
         restaurant: { id: string; name: string; isOpen: boolean; themeColor: string | null };
-        stats: { todayRevenue: number; todayOrders: number; pendingOrders: number; avgOrderValue: number; avgRating: number; totalReviews: number };
+        stats: {
+          todayRevenue: number;
+          todayOrders: number;
+          monthlyRevenue: number;
+          monthlyOrders: number;
+          todayHourlyAverage: number;
+          pendingOrders: number;
+          avgOrderValue: number;
+          avgRating: number;
+          totalReviews: number;
+        };
         recentOrders: Array<{
           id: string; status: string; total: number; createdAt: string;
           guestName: string | null; user: { name: string } | null;
@@ -56,6 +66,7 @@ export function OwnerDashboard() {
           paymentMethod: string;
         }>;
         last7DaysRevenue: Array<{ date: string; revenue: number; orders: number }>;
+        todayHourlyEarnings: Array<{ hour: string; rawHour: number; revenue: number; orders: number }>;
       };
     },
     refetchInterval: 30000, // Refresh every 30s
@@ -224,24 +235,36 @@ export function OwnerDashboard() {
               <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
                 {[
                   {
-                    label: "Today's Revenue",
-                    value: `₹${(data?.stats.todayRevenue ?? 0).toFixed(0)}`,
+                    label: "Today's Earnings",
+                    value: `₹${(data?.stats.todayRevenue ?? 0).toLocaleString('en-IN')}`,
+                    subtitle: `${data?.stats.todayOrders ?? 0} orders today`,
                     icon: DollarSign,
                     color: 'from-green-500/20 to-emerald-500/20',
                     border: 'border-green-500/20',
                     text: 'text-green-600 dark:text-green-400',
                   },
                   {
-                    label: "Today's Orders",
-                    value: data?.stats.todayOrders ?? 0,
-                    icon: ShoppingBag,
+                    label: "Monthly Earnings",
+                    value: `₹${(data?.stats.monthlyRevenue ?? 0).toLocaleString('en-IN')}`,
+                    subtitle: `${data?.stats.monthlyOrders ?? 0} orders this month`,
+                    icon: TrendingUp,
                     color: 'from-blue-500/20 to-cyan-500/20',
                     border: 'border-blue-500/20',
                     text: 'text-blue-600 dark:text-blue-400',
                   },
                   {
-                    label: 'Pending',
+                    label: "Today Hourly Avg",
+                    value: `₹${(data?.stats.todayHourlyAverage ?? 0).toFixed(0)}/hr`,
+                    subtitle: 'Avg earning per hour',
+                    icon: Clock,
+                    color: 'from-purple-500/20 to-indigo-500/20',
+                    border: 'border-purple-500/20',
+                    text: 'text-purple-600 dark:text-purple-400',
+                  },
+                  {
+                    label: 'Pending Orders',
                     value: data?.stats.pendingOrders ?? 0,
+                    subtitle: 'Needs confirmation',
                     icon: Clock,
                     color: 'from-orange-500/20 to-amber-500/20',
                     border: 'border-orange-500/20',
@@ -250,26 +273,20 @@ export function OwnerDashboard() {
                   {
                     label: 'Avg. Order',
                     value: `₹${(data?.stats.avgOrderValue ?? 0).toFixed(0)}`,
-                    icon: TrendingUp,
-                    color: 'from-purple-500/20 to-pink-500/20',
-                    border: 'border-purple-500/20',
-                    text: 'text-purple-600 dark:text-purple-400',
+                    subtitle: 'Per completed order',
+                    icon: ShoppingBag,
+                    color: 'from-pink-500/20 to-rose-500/20',
+                    border: 'border-pink-500/20',
+                    text: 'text-pink-600 dark:text-pink-400',
                   },
                   {
                     label: 'Avg. Rating',
                     value: data?.stats.avgRating ? `${(data.stats.avgRating as number).toFixed(1)} ★` : '0.0 ★',
+                    subtitle: `${data?.stats.totalReviews ?? 0} reviews`,
                     icon: Star,
-                    color: 'from-amber-500/20 to-orange-500/20',
+                    color: 'from-amber-500/20 to-yellow-500/20',
                     border: 'border-amber-500/20',
                     text: 'text-amber-600 dark:text-amber-400',
-                  },
-                  {
-                    label: 'Total Reviews',
-                    value: data?.stats.totalReviews ?? 0,
-                    icon: MessageSquare,
-                    color: 'from-teal-500/20 to-emerald-500/20',
-                    border: 'border-teal-500/20',
-                    text: 'text-teal-600 dark:text-teal-400',
                   },
                 ].map((stat, i) => {
                   const Icon = stat.icon;
@@ -278,40 +295,83 @@ export function OwnerDashboard() {
                       key={stat.label}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.1 }}
-                      className={`bg-gradient-to-br ${stat.color} border ${stat.border} rounded-2xl p-4`}
+                      transition={{ delay: i * 0.08 }}
+                      className={`bg-gradient-to-br ${stat.color} border ${stat.border} rounded-2xl p-4 flex flex-col justify-between`}
                     >
-                      <div className={`w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-3 ${stat.text}`}>
+                      <div className={`w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-2 ${stat.text}`}>
                         <Icon className="w-4.5 h-4.5" />
                       </div>
-                      <p className="font-display text-2xl font-bold">{stat.value}</p>
-                      <p className="text-muted-foreground text-xs mt-0.5">{stat.label}</p>
+                      <div>
+                        <p className="font-display text-xl font-bold tracking-tight">{stat.value}</p>
+                        <p className="font-semibold text-xs text-foreground/80 mt-0.5">{stat.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{stat.subtitle}</p>
+                      </div>
                     </motion.div>
                   );
                 })}
               </div>
 
-              {/* Revenue Chart */}
-              {data?.last7DaysRevenue && data.last7DaysRevenue.length > 0 && (() => {
-                const themeColor = data.restaurant.themeColor ?? '#E85D04';
+              {/* Charts Grid: Today's Hourly Earnings + 7 Days Revenue */}
+              {(() => {
+                const themeColor = data?.restaurant.themeColor ?? '#E85D04';
                 return (
-                  <div className="bg-card border border-border rounded-2xl p-5">
-                    <h2 className="font-display font-semibold mb-4">Revenue (Last 7 Days)</h2>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <AreaChart data={data.last7DaysRevenue}>
-                        <defs>
-                          <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={themeColor} stopOpacity={0.3} />
-                            <stop offset="95%" stopColor={themeColor} stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="date" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `₹${v}`} />
-                        <Tooltip formatter={(value: number) => [`₹${value}`, 'Revenue']} />
-                        <Area type="monotone" dataKey="revenue" stroke={themeColor} strokeWidth={2} fill="url(#revenueGradient)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                    {/* Today's Hourly Earnings Chart */}
+                    <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h2 className="font-display font-bold text-base text-foreground flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-orange-500" /> Today's Hourly Earnings
+                          </h2>
+                          <p className="text-xs text-muted-foreground">Earnings broken down by hour (12 AM - 11 PM)</p>
+                        </div>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20">
+                          Today: ₹{(data?.stats.todayRevenue ?? 0).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <ResponsiveContainer width="100%" height={210}>
+                        <AreaChart data={data?.todayHourlyEarnings ?? []}>
+                          <defs>
+                            <linearGradient id="hourlyGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={themeColor} stopOpacity={0.4} />
+                              <stop offset="95%" stopColor={themeColor} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="hour" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} interval={2} />
+                          <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `₹${v}`} />
+                          <Tooltip formatter={(value: number) => [`₹${value}`, 'Earnings']} labelFormatter={(l: string) => `Time: ${l}`} />
+                          <Area type="monotone" dataKey="revenue" stroke={themeColor} strokeWidth={2.5} fill="url(#hourlyGrad)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* 7 Days Revenue Chart */}
+                    <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h2 className="font-display font-bold text-base text-foreground flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-emerald-500" /> Revenue (Last 7 Days)
+                          </h2>
+                          <p className="text-xs text-muted-foreground">Daily revenue trend over the past week</p>
+                        </div>
+                      </div>
+                      <ResponsiveContainer width="100%" height={210}>
+                        <AreaChart data={data?.last7DaysRevenue ?? []}>
+                          <defs>
+                            <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="date" tick={{ fontSize: 10 }} tickLine={false} axisLine={false} />
+                          <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(v: number) => `₹${v}`} />
+                          <Tooltip formatter={(value: number) => [`₹${value}`, 'Revenue']} />
+                          <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2.5} fill="url(#revenueGradient)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
                   </div>
                 );
               })()}

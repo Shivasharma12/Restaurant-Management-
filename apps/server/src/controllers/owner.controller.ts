@@ -24,12 +24,19 @@ export async function getDashboard(req: AuthenticatedRequest, res: Response, nex
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [todayStats, recentOrders, orderStatusBreakdown, last7DaysRevenue, reviewStats] = await Promise.all([
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const [todayStats, monthlyStats, recentOrders, orderStatusBreakdown, last7DaysRevenue, reviewStats, todayHourlyRaw] = await Promise.all([
       prisma.order.aggregate({
-        where: { restaurantId: restaurant.id, createdAt: { gte: today } },
+        where: { restaurantId: restaurant.id, createdAt: { gte: today }, status: { not: 'CANCELLED' }, deletedAt: null },
         _count: { id: true },
         _sum: { total: true },
         _avg: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: { restaurantId: restaurant.id, createdAt: { gte: startOfMonth }, status: { not: 'CANCELLED' }, deletedAt: null },
+        _count: { id: true },
+        _sum: { total: true },
       }),
       prisma.order.findMany({
         where: { restaurantId: restaurant.id },
@@ -64,9 +71,41 @@ export async function getDashboard(req: AuthenticatedRequest, res: Response, nex
         _avg: { rating: true },
         _count: { rating: true },
       }),
+      // Today hourly breakdown (0 to 23 hours)
+      prisma.$queryRaw<Array<{ hour: number; revenue: number; orders: number }>>`
+        SELECT 
+          EXTRACT(HOUR FROM "createdAt")::int as hour,
+          SUM(total)::float as revenue,
+          COUNT(id)::int as orders
+        FROM orders
+        WHERE "restaurantId" = ${restaurant.id}
+          AND "createdAt" >= ${today}
+          AND status != 'CANCELLED'
+          AND "deletedAt" IS NULL
+        GROUP BY EXTRACT(HOUR FROM "createdAt")
+        ORDER BY hour ASC
+      `,
     ]);
 
     const pendingOrders = orderStatusBreakdown.find((s) => s.status === 'PENDING')?._count.status ?? 0;
+
+    // Format 24-hour array for today's hourly earnings chart
+    const todayHourlyEarnings = Array.from({ length: 24 }, (_, h) => {
+      const found = todayHourlyRaw.find((item) => Number(item.hour) === h);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const formattedHour = `${h % 12 === 0 ? 12 : h % 12} ${ampm}`;
+      return {
+        hour: formattedHour,
+        rawHour: h,
+        revenue: found ? Number(found.revenue) : 0,
+        orders: found ? Number(found.orders) : 0,
+      };
+    });
+
+    const currentHour = new Date().getHours();
+    const activeHours = Math.max(1, currentHour + 1);
+    const todayRevenueVal = todayStats._sum.total ?? 0;
+    const todayHourlyAverage = todayRevenueVal > 0 ? todayRevenueVal / activeHours : 0;
 
     res.json({
       success: true,
@@ -78,8 +117,11 @@ export async function getDashboard(req: AuthenticatedRequest, res: Response, nex
           themeColor: restaurant.themeColor,
         },
         stats: {
-          todayRevenue: todayStats._sum.total ?? 0,
+          todayRevenue: todayRevenueVal,
           todayOrders: todayStats._count.id,
+          monthlyRevenue: monthlyStats._sum.total ?? 0,
+          monthlyOrders: monthlyStats._count.id,
+          todayHourlyAverage,
           pendingOrders,
           avgOrderValue: todayStats._avg.total ?? 0,
           avgRating: reviewStats._avg.rating ?? 0,
@@ -88,6 +130,7 @@ export async function getDashboard(req: AuthenticatedRequest, res: Response, nex
         recentOrders,
         orderStatusBreakdown,
         last7DaysRevenue,
+        todayHourlyEarnings,
       },
     });
   } catch (error) { next(error); }
@@ -854,7 +897,12 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response, nex
     const days = period === '30d' ? 30 : 7;
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    const [revenueData, topItems, reviewStats] = await Promise.all([
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+    const [revenueData, topItems, reviewStats, todayStats, monthlyStats, todayHourlyRaw] = await Promise.all([
       prisma.$queryRaw<Array<{ date: string; revenue: number; orders: number }>>`
         SELECT 
           DATE("createdAt")::text as date,
@@ -882,6 +930,29 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response, nex
         _avg: { rating: true },
         _count: { rating: true },
       }),
+      prisma.order.aggregate({
+        where: { restaurantId: restaurant.id, createdAt: { gte: today }, status: { not: 'CANCELLED' }, deletedAt: null },
+        _count: { id: true },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: { restaurantId: restaurant.id, createdAt: { gte: startOfMonth }, status: { not: 'CANCELLED' }, deletedAt: null },
+        _count: { id: true },
+        _sum: { total: true },
+      }),
+      prisma.$queryRaw<Array<{ hour: number; revenue: number; orders: number }>>`
+        SELECT 
+          EXTRACT(HOUR FROM "createdAt")::int as hour,
+          SUM(total)::float as revenue,
+          COUNT(id)::int as orders
+        FROM orders
+        WHERE "restaurantId" = ${restaurant.id}
+          AND "createdAt" >= ${today}
+          AND status != 'CANCELLED'
+          AND "deletedAt" IS NULL
+        GROUP BY EXTRACT(HOUR FROM "createdAt")
+        ORDER BY hour ASC
+      `,
     ]);
 
     const topItemIds = topItems.map((t) => t.menuItemId);
@@ -896,6 +967,23 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response, nex
       revenue: t._sum.subtotal ?? 0,
     }));
 
+    const todayHourlyEarnings = Array.from({ length: 24 }, (_, h) => {
+      const found = todayHourlyRaw.find((item) => Number(item.hour) === h);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const formattedHour = `${h % 12 === 0 ? 12 : h % 12} ${ampm}`;
+      return {
+        hour: formattedHour,
+        rawHour: h,
+        revenue: found ? Number(found.revenue) : 0,
+        orders: found ? Number(found.orders) : 0,
+      };
+    });
+
+    const currentHour = new Date().getHours();
+    const activeHours = Math.max(1, currentHour + 1);
+    const todayRevenueVal = todayStats._sum.total ?? 0;
+    const todayHourlyAverage = todayRevenueVal > 0 ? todayRevenueVal / activeHours : 0;
+
     res.json({
       success: true,
       data: {
@@ -905,6 +993,14 @@ export async function getAnalytics(req: AuthenticatedRequest, res: Response, nex
           avgRating: reviewStats._avg.rating ?? 0,
           totalReviews: reviewStats._count.rating,
         },
+        summaryStats: {
+          todayRevenue: todayRevenueVal,
+          todayOrders: todayStats._count.id,
+          monthlyRevenue: monthlyStats._sum.total ?? 0,
+          monthlyOrders: monthlyStats._count.id,
+          todayHourlyAverage,
+        },
+        todayHourlyEarnings,
       },
     });
   } catch (error) { next(error); }
