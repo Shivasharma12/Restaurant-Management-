@@ -37,6 +37,21 @@ const BADGE_CONFIG: Record<string, { label: string; className: string }> = {
   NEW: { label: '✨ New', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
 };
 
+function getFallbackFoodImage(name: string, isVeg: boolean): string {
+  const lower = name.toLowerCase();
+  if (lower.includes('paneer')) return 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('chicken')) return 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('naan') || lower.includes('roti') || lower.includes('bread')) return 'https://images.unsplash.com/photo-1626074353765-517a681e40be?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('biryani') || lower.includes('rice')) return 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('jamun') || lower.includes('dessert') || lower.includes('sweet')) return 'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('lassi') || lower.includes('drink') || lower.includes('mango')) return 'https://images.unsplash.com/photo-1546173159-315724a31696?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('corn')) return 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('dal') || lower.includes('makhani')) return 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop';
+  return isVeg
+    ? 'https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=800&auto=format&fit=crop'
+    : 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop';
+}
+
 export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug, layoutStyle = 'modern' }: MenuItemCardProps) {
   const [selectedVariant, setSelectedVariant] = useState<{ id: string; name: string; price: number } | null>(
     item.variants.length > 0 ? (item.variants[0] ?? null) : null
@@ -62,6 +77,8 @@ export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug, l
   const addOnsTotal = selectedAddOns.reduce((sum, ao) => sum + ao.price, 0);
   const totalPrice = currentPrice + addOnsTotal;
 
+  const itemImageUrl = item.image ? getImageUrl(item.image) : getFallbackFoodImage(item.name, item.isVeg);
+
   const handleAddToCart = () => {
     if (!item.isAvailable) {
       toast.error('This item is currently unavailable');
@@ -76,7 +93,7 @@ export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug, l
     addItem({
       menuItemId: item.id,
       name: item.name,
-      image: item.image,
+      image: itemImageUrl,
       isVeg: item.isVeg,
       variantId: selectedVariant?.id ?? null,
       variantName: selectedVariant?.name ?? null,
@@ -182,24 +199,16 @@ export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug, l
 
         {/* Right: Image + actions */}
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
-          <div className="relative">
-            {item.image ? (
-              <div className="w-28 h-24 rounded-xl overflow-hidden">
-                <Image src={getImageUrl(item.image)} alt={item.name} fill className="object-cover" />
-              </div>
-            ) : (
-              <div className="w-28 h-24 rounded-xl bg-muted flex items-center justify-center text-3xl">
-                {item.isVeg ? '🥗' : '🍗'}
-              </div>
-            )}
+          <div className="relative w-28 h-24 rounded-xl overflow-hidden border border-border/40 shadow-sm shrink-0 bg-muted">
+            <img src={itemImageUrl} alt={item.name} className="w-full h-full object-cover" />
 
             {/* Favorite button */}
             <button
               onClick={toggleFavorite}
               disabled={favoriteLoading}
-              className="absolute top-1 right-1 w-7 h-7 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-sm"
+              className="absolute top-1.5 right-1.5 w-7 h-7 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center shadow-md transition-transform active:scale-90"
             >
-              <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
+              <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-white'}`} />
             </button>
           </div>
 

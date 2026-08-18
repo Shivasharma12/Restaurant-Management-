@@ -25,6 +25,21 @@ const NAV_ITEMS = [
   { label: 'Settings', icon: Settings, href: '/owner/settings' },
 ];
 
+function getOwnerFallbackFoodImage(name: string, isVeg: boolean): string {
+  const lower = name.toLowerCase();
+  if (lower.includes('paneer')) return 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('chicken')) return 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('naan') || lower.includes('roti') || lower.includes('bread')) return 'https://images.unsplash.com/photo-1626074353765-517a681e40be?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('biryani') || lower.includes('rice')) return 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('jamun') || lower.includes('dessert') || lower.includes('sweet')) return 'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('lassi') || lower.includes('drink') || lower.includes('mango')) return 'https://images.unsplash.com/photo-1546173159-315724a31696?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('corn')) return 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?q=80&w=800&auto=format&fit=crop';
+  if (lower.includes('dal') || lower.includes('makhani')) return 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop';
+  return isVeg
+    ? 'https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=800&auto=format&fit=crop'
+    : 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop';
+}
+
 type Category = { id: string; name: string; sortOrder: number; _count: { items: number } };
 type MenuItem = {
   id: string; name: string; description: string | null; price: number;
@@ -380,13 +395,13 @@ export function OwnerMenuPage() {
                 {filteredItems?.map((item) => (
                   <motion.div key={item.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                     className={`bg-card border rounded-2xl overflow-hidden transition-all ${item.isAvailable ? 'border-border' : 'border-dashed border-border opacity-60'}`}>
-                    {item.image ? (
-                      <img src={item.image} alt={item.name} className="w-full h-36 object-cover" />
-                    ) : (
-                      <div className="w-full h-36 bg-gradient-to-br from-orange-500/10 to-amber-500/10 flex items-center justify-center">
-                        <Image className="w-10 h-10 text-orange-300" />
-                      </div>
-                    )}
+                    <div className="w-full h-36 overflow-hidden bg-muted relative">
+                      <img
+                        src={item.image || getOwnerFallbackFoodImage(item.name, item.isVeg)}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                     <div className="p-3">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
