@@ -221,30 +221,32 @@ export function AdminRestaurantsPage() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted">
+        <header className="flex items-center justify-between px-3.5 sm:px-5 py-3 border-b border-border bg-background/95 backdrop-blur-sm gap-2 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted shrink-0">
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="font-display font-bold text-xl">Restaurant Management</h1>
+            <h1 className="font-display font-bold text-base sm:text-xl truncate">Restaurant Management</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-semibold rounded-xl transition-all shadow-md shadow-primary/10"
+              className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 bg-primary text-primary-foreground hover:bg-primary/95 text-xs font-semibold rounded-xl transition-all shadow-md shadow-primary/10 whitespace-nowrap shrink-0"
             >
-              <Plus className="w-3.5 h-3.5" /> Add Restaurant
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Add Restaurant</span>
+              <span className="sm:hidden">Add</span>
             </button>
-            <button onClick={() => refetch()} className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground">
+            <button onClick={() => refetch()} className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground shrink-0">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 value={search}
@@ -253,12 +255,14 @@ export function AdminRestaurantsPage() {
                 className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 min-w-0 max-w-full">
               {STATUS_FILTERS.map((f) => (
                 <button
                   key={f}
                   onClick={() => { setStatus(f); setPage(1); }}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium capitalize transition-all ${status === f ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-muted'}`}
+                  className={`px-3 py-2 rounded-xl text-xs font-medium capitalize whitespace-nowrap shrink-0 transition-all ${
+                    status === f ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
+                  }`}
                 >
                   {f}
                 </button>

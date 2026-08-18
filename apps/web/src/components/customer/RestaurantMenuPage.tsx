@@ -637,27 +637,27 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
   const restaurantBanner = isPreview && searchParams?.banner !== undefined ? (searchParams.banner || null) : restaurant.banner;
 
   return (
-    <div className="min-h-screen bg-background pb-24 relative overflow-x-hidden w-full">
+    <div className="min-h-screen bg-background pb-24 relative">
       {/* Floating Navigation Header */}
-      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent">
-        <div className="flex items-center gap-1.5 text-white drop-shadow-md flex-shrink-0 select-none">
+      <div className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between px-3 sm:px-4 py-3 bg-gradient-to-b from-black/80 via-black/40 to-transparent gap-2 min-w-0">
+        <div className="flex items-center gap-1.5 text-white drop-shadow-md shrink-0 select-none">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-md">
             <QrCode className="w-4 h-4 text-white" />
           </div>
-          <span className="font-display font-bold text-sm tracking-tight hidden sm:block">{restaurantName || 'Digital Menu'}</span>
+          <span className="font-display font-bold text-xs sm:text-sm tracking-tight hidden sm:block truncate max-w-[120px] md:max-w-none">{restaurantName || 'Digital Menu'}</span>
         </div>
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 overflow-x-auto no-scrollbar py-0.5 shrink min-w-0">
           {/* Loyalty Points Header Badge */}
           <button
             onClick={() => setShowLoyaltyModal(true)}
-            className="text-[10px] sm:text-xs bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-200 px-2.5 py-1.5 rounded-lg backdrop-blur-md font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95"
+            className="text-[10px] sm:text-xs bg-amber-500/25 hover:bg-amber-500/40 border border-amber-400/50 text-amber-200 px-2 sm:px-2.5 py-1.5 rounded-lg backdrop-blur-md font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95 whitespace-nowrap shrink-0"
             title="Click to view Loyalty Points details"
           >
-            <Gift className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+            <Gift className="w-3.5 h-3.5 text-amber-300 animate-pulse shrink-0" />
             {activeUser ? (
-              <span>⭐ {currentPoints} Pts <span className="text-[10px] opacity-80">(₹{(currentPoints / 50).toFixed(2)})</span></span>
+              <span>⭐ {currentPoints} Pts</span>
             ) : (
-              <span>⭐ Loyalty Points</span>
+              <span>⭐ Points</span>
             )}
           </button>
 
@@ -665,7 +665,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
           {activeUser && (
             <button
               onClick={() => setShowNotifModal(true)}
-              className="relative p-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all backdrop-blur-md active:scale-95 flex items-center justify-center"
+              className="relative p-1.5 sm:p-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all backdrop-blur-md active:scale-95 flex items-center justify-center shrink-0"
               title="Notifications"
             >
               <Bell className="w-3.5 h-3.5 text-white" />
@@ -678,14 +678,14 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
           )}
 
           {activeUser ? (
-            <div className="flex items-center gap-1 sm:gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <span className="text-xs text-white/90 font-semibold bg-white/10 px-2.5 py-1.5 rounded-lg backdrop-blur-md hidden sm:inline-block">
                 Hi, {activeUser.name.split(' ')[0]}
               </span>
               {activeUser.role !== 'CUSTOMER' ? (
                 <Link
                   href={activeUser.role === 'SUPER_ADMIN' ? '/admin/dashboard' : '/owner/dashboard'}
-                  className="text-[10px] sm:text-xs bg-primary hover:bg-primary/95 border border-primary/20 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all"
+                  className="text-[10px] sm:text-xs bg-primary hover:bg-primary/95 border border-primary/20 px-2 sm:px-2.5 py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all whitespace-nowrap shrink-0"
                 >
                   Dashboard
                 </Link>
@@ -698,9 +698,9 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
                       document.getElementById('orders-section')?.scrollIntoView({ behavior: 'smooth' });
                     }, 100);
                   }}
-                  className="text-[10px] sm:text-xs bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all"
+                  className="text-[10px] sm:text-xs bg-white/10 hover:bg-white/20 border border-white/20 px-2 sm:px-2.5 py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all whitespace-nowrap shrink-0"
                 >
-                  Order History
+                  History
                 </button>
               )}
               <button
@@ -708,7 +708,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
                   logout();
                   toast.success('Logged out successfully');
                 }}
-                className="text-[10px] sm:text-xs bg-red-500/80 hover:bg-red-500 border border-red-500/20 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all"
+                className="text-[10px] sm:text-xs bg-red-500/80 hover:bg-red-500 border border-red-500/20 px-2 sm:px-2.5 py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all whitespace-nowrap shrink-0"
               >
                 Logout
               </button>
@@ -717,13 +717,13 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
             <>
               <Link
                 href={`/login?restaurant=${slug}`}
-                className="text-[10px] sm:text-xs bg-primary hover:bg-primary/95 border border-primary/20 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all"
+                className="text-[10px] sm:text-xs bg-primary hover:bg-primary/95 border border-primary/20 px-2.5 py-1.5 sm:px-3 sm:py-1.5 rounded-lg text-white font-semibold shadow-sm transition-all whitespace-nowrap shrink-0"
               >
                 Login
               </Link>
             </>
           )}
-          <ThemeToggle size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20" />
+          <ThemeToggle size="sm" className="bg-white/10 border-white/20 text-white hover:bg-white/20 shrink-0" />
         </div>
       </div>
       {addonOrderId && (
@@ -749,124 +749,121 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
       {/* Banner */}
       <div className="relative h-48 md:h-64 w-full overflow-hidden">
         {restaurantBanner ? (
-          <Image
-            src={restaurantBanner}
-            alt={restaurantName}
-            fill
-            className="object-cover"
-          />
+          <img src={restaurantBanner} alt={restaurantName || 'Banner'} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${themeColor}, #F48C06)` }} />
+          <div className="w-full h-full bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-600" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
       </div>
 
-      {/* Restaurant Header */}
-      <div className="relative -mt-16 px-4 md:px-8">
-        <div className="flex items-end gap-4 mb-4">
-          {restaurantLogo ? (
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden border-4 border-background shadow-xl flex-shrink-0">
-              <Image src={restaurantLogo} alt={restaurantName} width={96} height={96} className="object-cover" />
-            </div>
-          ) : (
-            <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl border-4 border-background shadow-xl flex-shrink-0 flex items-center justify-center text-3xl"
-              style={{ backgroundColor: themeColor }}>
-              🍽️
-            </div>
-          )}
-          <div className="flex-1 pb-2">
-            <div className="flex items-center gap-2 flex-wrap relative">
-              <h1 className="font-display text-2xl md:text-3xl font-bold">{restaurantName}</h1>
-              
-              {/* Interactive Status Badge & Weekly Hours Dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowHours(!showHours)}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-sm transition-all hover:scale-105 active:scale-95 ${
-                    statusInfo.status === 'OPEN'
-                      ? 'bg-green-500/10 text-green-600 border border-green-500/20 dark:bg-green-500/20 dark:text-green-400'
-                      : statusInfo.status === 'TEMPORARILY_CLOSED'
-                      ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400'
-                      : 'bg-red-500/10 text-red-600 border border-red-500/20 dark:bg-red-500/20 dark:text-red-400'
-                  }`}
-                >
-                  <span className={`w-2 h-2 rounded-full animate-pulse ${
-                    statusInfo.status === 'OPEN'
-                      ? 'bg-green-500'
-                      : statusInfo.status === 'TEMPORARILY_CLOSED'
-                      ? 'bg-amber-500'
-                      : 'bg-red-500'
-                  }`} />
-                  <span>{statusInfo.badgeText}</span>
-                  <span className="text-[10px] opacity-75 font-normal">({statusInfo.detailText})</span>
-                  <Clock className="w-3 h-3 ml-0.5 opacity-60" />
-                </button>
+      {/* Restaurant Header Info */}
+      <div className="px-4 md:px-8 -mt-16 relative z-10 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-4">
+          <div className="flex items-end gap-3.5 min-w-0 flex-1">
+            {restaurantLogo ? (
+              <div className="w-18 h-18 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-4 border-background shadow-xl shrink-0">
+                <img src={restaurantLogo} alt={restaurantName || 'Logo'} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-18 h-18 sm:w-24 sm:h-24 rounded-2xl border-4 border-background shadow-xl shrink-0 flex items-center justify-center text-2xl sm:text-3xl text-white font-bold"
+                style={{ backgroundColor: themeColor }}>
+                {restaurantName?.[0] ?? '🍽️'}
+              </div>
+            )}
+            <div className="flex-1 min-w-0 pb-1">
+              <div className="flex items-center gap-2 flex-wrap relative">
+                <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-bold text-foreground truncate">{restaurantName}</h1>
+                
+                {/* Interactive Status Badge & Weekly Hours Dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowHours(!showHours)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-semibold shadow-sm transition-all whitespace-nowrap hover:scale-105 active:scale-95 ${
+                      statusInfo.status === 'OPEN'
+                        ? 'bg-green-500/10 text-green-600 border border-green-500/20 dark:bg-green-500/20 dark:text-green-400'
+                        : statusInfo.status === 'TEMPORARILY_CLOSED'
+                        ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20 dark:bg-amber-500/20 dark:text-amber-400'
+                        : 'bg-red-500/10 text-red-600 border border-red-500/20 dark:bg-red-500/20 dark:text-red-400'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full animate-pulse shrink-0 ${
+                      statusInfo.status === 'OPEN'
+                        ? 'bg-green-500'
+                        : statusInfo.status === 'TEMPORARILY_CLOSED'
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
+                    }`} />
+                    <span className="whitespace-nowrap">{statusInfo.badgeText}</span>
+                    <span className="text-[10px] opacity-75 font-normal whitespace-nowrap">({statusInfo.detailText})</span>
+                    <Clock className="w-3 h-3 ml-0.5 opacity-60 shrink-0" />
+                  </button>
 
-                {/* Dropdown Weekly Hours */}
-                <AnimatePresence>
-                  {showHours && restaurant.operatingHours && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowHours(false)} />
-                      <motion.div
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute left-0 mt-2 z-50 w-72 bg-card/95 backdrop-blur-md border border-border shadow-2xl rounded-2xl p-4 text-card-foreground"
-                      >
-                        <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
-                          <h4 className="font-semibold text-sm flex items-center gap-1.5">
-                            <Clock className="w-4 h-4 text-primary" /> Weekly Hours
-                          </h4>
-                          <button onClick={() => setShowHours(false)} className="text-muted-foreground hover:text-foreground">
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
-                            const dayHours = (restaurant.operatingHours as any)?.[day];
-                            const isToday = new Date().getDay() === ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(day);
-                            return (
-                              <div
-                                key={day}
-                                className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
-                                  isToday
-                                    ? 'bg-primary/10 text-primary border border-primary/20 font-semibold shadow-sm'
-                                    : 'text-muted-foreground'
-                                }`}
-                              >
-                                <span className="capitalize">{day}</span>
-                                <span>
-                                  {dayHours?.closed || !dayHours?.open
-                                    ? 'Closed'
-                                    : `${formatTime12h(dayHours.open)} - ${formatTime12h(dayHours.close)}`}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    </>
-                  )}
-                </AnimatePresence>
+                  {/* Dropdown Weekly Hours */}
+                  <AnimatePresence>
+                    {showHours && restaurant.operatingHours && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setShowHours(false)} />
+                        <motion.div
+                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute left-0 mt-2 z-50 w-72 bg-card/95 backdrop-blur-md border border-border shadow-2xl rounded-2xl p-4 text-card-foreground"
+                        >
+                          <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
+                            <h4 className="font-semibold text-sm flex items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-primary" /> Weekly Hours
+                            </h4>
+                            <button onClick={() => setShowHours(false)} className="text-muted-foreground hover:text-foreground">
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="space-y-2">
+                            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                              const dayHours = (restaurant.operatingHours as any)?.[day];
+                              const isToday = new Date().getDay() === ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'].indexOf(day);
+                              return (
+                                <div
+                                  key={day}
+                                  className={`flex items-center justify-between text-xs px-2.5 py-1.5 rounded-lg transition-colors ${
+                                    isToday
+                                      ? 'bg-primary/10 text-primary border border-primary/20 font-semibold shadow-sm'
+                                      : 'text-muted-foreground'
+                                  }`}
+                                >
+                                  <span className="capitalize">{day}</span>
+                                  <span>
+                                    {dayHours?.closed || !dayHours?.open
+                                      ? 'Closed'
+                                      : `${formatTime12h(dayHours.open)} - ${formatTime12h(dayHours.close)}`}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
+              {restaurant.cuisineType && (
+                <p className="text-muted-foreground text-xs sm:text-sm mt-0.5 truncate">{restaurant.cuisineType}</p>
+              )}
+              {displayTableNumber && (
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold mt-1" style={{ color: themeColor }}>
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  Table {displayTableNumber}
+                </div>
+              )}
             </div>
-            {restaurant.cuisineType && (
-              <p className="text-muted-foreground text-sm mt-1">{restaurant.cuisineType}</p>
-            )}
-            {displayTableNumber && (
-              <div className="flex items-center gap-1.5 text-sm font-medium mt-1" style={{ color: themeColor }}>
-                <MapPin className="w-3.5 h-3.5" />
-                Table {displayTableNumber}
-              </div>
-            )}
           </div>
 
-          {/* Upper Section Extra Big Call Waiter Button */}
-          <div className="pb-2">
+          {/* Upper Section Responsive Call Waiter Button */}
+          <div className="shrink-0 w-full sm:w-auto">
             <motion.button
-              whileHover={{ scale: waiterStatus !== 'IDLE' ? 1 : 1.05 }}
-              whileTap={{ scale: waiterStatus !== 'IDLE' ? 1 : 0.95 }}
+              whileHover={{ scale: waiterStatus !== 'IDLE' ? 1 : 1.03 }}
+              whileTap={{ scale: waiterStatus !== 'IDLE' ? 1 : 0.97 }}
               onClick={() => {
                 const stored = typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null;
                 const existingTable = tableNumber || manualTableNumber || stored;
@@ -877,7 +874,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
                 }
               }}
               disabled={waiterStatus !== 'IDLE' || waiterLoading}
-              className={`px-6 py-3.5 rounded-full text-white font-bold text-base md:text-lg shadow-xl flex items-center justify-center gap-2.5 transition-all border ${
+              className={`w-full sm:w-auto px-5 py-3 rounded-2xl sm:rounded-full text-white font-bold text-sm sm:text-base shadow-xl flex items-center justify-center gap-2 transition-all border whitespace-nowrap ${
                 waiterStatus === 'COMING'
                   ? 'bg-[#10b981] border-[#047857] shadow-emerald-500/30 ring-4 ring-emerald-500/20'
                   : waiterStatus === 'OCCUPIED'
@@ -887,16 +884,16 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
                   : 'bg-gradient-to-r from-orange-500 to-amber-500 border-orange-600 hover:shadow-orange-500/40 ring-4 ring-orange-500/20'
               }`}
             >
-              <BellRing className={`w-5 h-5 flex-shrink-0 ${waiterStatus === 'COMING' || waiterStatus === 'PENDING' ? 'animate-pulse' : waiterStatus === 'OCCUPIED' ? '' : 'animate-bounce'}`} />
-              <span className="tracking-wide font-semibold">
+              <BellRing className={`w-4 h-4 sm:w-5 sm:h-5 shrink-0 ${waiterStatus === 'COMING' || waiterStatus === 'PENDING' ? 'animate-pulse' : waiterStatus === 'OCCUPIED' ? '' : 'animate-bounce'}`} />
+              <span className="tracking-wide font-bold whitespace-nowrap">
                 {waiterLoading
                   ? 'Sending Call...'
                   : waiterStatus === 'PENDING'
-                  ? 'Waiter Call Sent (Waiting...)'
+                  ? 'Waiter Call Sent...'
                   : waiterStatus === 'COMING'
-                  ? `Waiter is coming in a few minutes (${formatTimer(waiterComingTimer)})`
+                  ? `Waiter is coming (${formatTimer(waiterComingTimer)})`
                   : waiterStatus === 'OCCUPIED'
-                  ? `Waiter is occupied (${formatTimer(waiterCooldown)})`
+                  ? `Waiter occupied (${formatTimer(waiterCooldown)})`
                   : 'Call Waiter'}
               </span>
             </motion.button>
@@ -1153,7 +1150,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
         </div>
 
         {/* Veg/Non-veg filters */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar scrollbar-hide pb-1 pr-6 whitespace-nowrap flex-nowrap min-w-0 max-w-full">
           {(['ALL', 'VEG', 'NON_VEG', 'VEGAN'] as const).map((filter) => (
             <button
               key={filter}
@@ -1336,19 +1333,20 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
       </AnimatePresence>
 
       {/* Floating Action Buttons — right column */}
-      <div className="fixed bottom-6 right-4 z-20 flex flex-col gap-3 items-center">
+      <div className="fixed bottom-20 sm:bottom-6 right-3 sm:right-4 z-30 flex flex-col gap-2.5 items-center">
         {showScrollTop && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="w-12 h-12 rounded-full bg-background border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors"
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-background border border-border shadow-lg flex items-center justify-center hover:bg-muted transition-colors text-foreground"
           >
             <ChevronUp className="w-5 h-5" />
           </button>
         )}
         <button
           onClick={() => setChatOpen(true)}
-          className="w-12 h-12 rounded-full text-white shadow-2xl flex items-center justify-center transition-transform hover:scale-110"
+          className="w-12 h-12 rounded-full text-white shadow-2xl flex items-center justify-center transition-transform hover:scale-110 active:scale-95 border-2 border-white/20"
           style={{ backgroundColor: themeColor }}
+          title="Ask AI Assistant"
         >
           <Bot className="w-6 h-6" />
         </button>

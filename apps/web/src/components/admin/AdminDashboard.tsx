@@ -179,35 +179,41 @@ export function AdminDashboard() {
 
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted">
+        <header className="flex items-center justify-between px-3.5 sm:px-5 py-3 border-b border-border bg-background/95 backdrop-blur-sm gap-2 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted shrink-0">
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="font-display font-bold text-xl">Platform Overview</h1>
+            <h1 className="font-display font-bold text-base sm:text-xl truncate">Platform Overview</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-1 shrink min-w-0">
             <button
               onClick={() => setShowBroadcastModal(true)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white shadow-md transition-all flex items-center gap-1.5"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-indigo-600 to-purple-600 hover:opacity-95 text-white shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              title="Broadcast Announcement"
             >
-              <Megaphone className="w-3.5 h-3.5" /> Broadcast Announcement
+              <Megaphone className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">Broadcast Announcement</span>
+              <span className="md:hidden">Broadcast</span>
             </button>
             <button
               onClick={() => setShowChatModal(true)}
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white shadow-md transition-all flex items-center gap-1.5"
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white shadow-md transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0"
+              title="1-to-1 Live Support Chat"
             >
-              <MessageSquare className="w-3.5 h-3.5" /> 1-to-1 Live Support Chat
+              <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden md:inline">1-to-1 Live Support Chat</span>
+              <span className="md:hidden">Live Chat</span>
             </button>
             {(['7d', '30d'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
                   period === p ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
                 }`}
               >
-                {p === '7d' ? '7 Days' : '30 Days'}
+                {p === '7d' ? '7D' : '30D'}
               </button>
             ))}
           </div>

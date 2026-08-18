@@ -303,55 +303,57 @@ export function OwnerCustomizePage() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted">
+        <header className="flex items-center justify-between px-3.5 sm:px-5 py-3 border-b border-border bg-background/95 backdrop-blur-sm gap-2 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted shrink-0">
               <Menu className="w-5 h-5" />
             </button>
-            <div>
-              <h1 className="font-display font-bold text-xl flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-primary animate-pulse" />
-                Restaurant Studio & Customization
+            <div className="min-w-0">
+              <h1 className="font-display font-bold text-base sm:text-xl flex items-center gap-1.5 sm:gap-2 truncate">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-primary animate-pulse shrink-0" />
+                <span className="truncate">Restaurant Studio & Customization</span>
               </h1>
-              <p className="text-xs text-muted-foreground">Customize branding, menu templates, section order & fields</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground truncate hidden sm:block">Customize branding, menu templates, section order & fields</p>
             </div>
           </div>
-          <WaiterBell />
+          <div className="shrink-0">
+            <WaiterBell />
+          </div>
         </header>
 
         {/* Studio Sub-header Navigation */}
-        <div className="border-b border-border px-5 py-2.5 bg-muted/20 flex gap-2 overflow-x-auto">
+        <div className="border-b border-border px-3.5 sm:px-5 py-2.5 bg-muted/20 flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap flex-nowrap min-w-0 max-w-full">
           <button
             onClick={() => setActiveTab('DESIGN_TEMPLATES')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'DESIGN_TEMPLATES' ? 'bg-primary text-white shadow-md' : 'bg-muted/50 text-muted-foreground hover:bg-muted'
             }`}
           >
-            <LayoutGrid className="w-4 h-4" /> Menu Design Templates
+            <LayoutGrid className="w-4 h-4 shrink-0" /> Menu Design Templates
           </button>
           <button
             onClick={() => setActiveTab('THEME')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'THEME' ? 'bg-primary text-white shadow-md' : 'bg-muted/50 text-muted-foreground hover:bg-muted'
             }`}
           >
-            <Palette className="w-4 h-4" /> Color Themes & Palettes
+            <Palette className="w-4 h-4 shrink-0" /> Color Themes & Palettes
           </button>
           <button
             onClick={() => setActiveTab('DRAG_MENU')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'DRAG_MENU' ? 'bg-primary text-white shadow-md' : 'bg-muted/50 text-muted-foreground hover:bg-muted'
             }`}
           >
-            <Layers className="w-4 h-4" /> Reorder Menu Sections
+            <Layers className="w-4 h-4 shrink-0" /> Reorder Menu Sections
           </button>
           <button
             onClick={() => setActiveTab('CUSTOM_FIELDS')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'CUSTOM_FIELDS' ? 'bg-primary text-white shadow-md' : 'bg-muted/50 text-muted-foreground hover:bg-muted'
             }`}
           >
-            <Plus className="w-4 h-4" /> Custom Info Fields
+            <Plus className="w-4 h-4 shrink-0" /> Custom Info Fields
           </button>
         </div>
 

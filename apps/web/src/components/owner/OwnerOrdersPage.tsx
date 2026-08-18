@@ -188,36 +188,36 @@ export function OwnerOrdersPage() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted">
+        <header className="flex items-center justify-between px-3.5 sm:px-5 py-3 border-b border-border bg-background/95 backdrop-blur-sm gap-2 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted shrink-0">
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="font-display font-bold text-xl">Orders</h1>
+            <h1 className="font-display font-bold text-base sm:text-xl truncate">Orders</h1>
             {data?.pagination.total !== undefined && (
-              <span className="text-sm text-muted-foreground">({data.pagination.total} total)</span>
+              <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">({data.pagination.total} total)</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <WaiterBell />
-            <button onClick={() => refetch()} className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground">
+            <button onClick={() => refetch()} className="p-2 rounded-xl hover:bg-muted transition-colors text-muted-foreground shrink-0">
               <RefreshCw className="w-4 h-4" />
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {/* Filters */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
                 placeholder="Search order ID or customer..." className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
             </div>
-            <div className="flex gap-2 overflow-x-auto">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 min-w-0 max-w-full">
               {ORDER_STATUSES.map((s) => (
                 <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }}
-                  className={`px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${statusFilter === s ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-muted'}`}>
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${statusFilter === s ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-card border border-border text-muted-foreground hover:bg-muted'}`}>
                   {s}
                 </button>
               ))}

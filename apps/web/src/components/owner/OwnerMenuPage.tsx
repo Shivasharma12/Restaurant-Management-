@@ -284,29 +284,47 @@ export function OwnerMenuPage() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted">
+        <header className="flex items-center justify-between px-3.5 sm:px-5 py-3 border-b border-border bg-background/95 backdrop-blur-sm gap-2 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted shrink-0">
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="font-display font-bold text-xl">Menu Management</h1>
+            <h1 className="font-display font-bold text-base sm:text-xl truncate">Menu Management</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <WaiterBell />
             <button
               onClick={() => seedDemoMutation.mutate()}
               disabled={seedDemoMutation.isPending}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-semibold text-xs shadow-sm transition-all disabled:opacity-60"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-semibold text-xs shadow-sm transition-all disabled:opacity-60 whitespace-nowrap shrink-0"
+              title="Load Sample Demo Menu"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              {seedDemoMutation.isPending ? 'Loading...' : 'Load Sample Menu'}
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">{seedDemoMutation.isPending ? 'Loading...' : 'Load Sample Menu'}</span>
+              <span className="sm:hidden">{seedDemoMutation.isPending ? '...' : 'Sample'}</span>
             </button>
             <button onClick={() => { setEditItem(null); setForm({ name: '', description: '', price: '', categoryId: activeCategory ?? '', isVeg: true, isAvailable: true, image: null }); setShowAddItem(true); }}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors">
-              <Plus className="w-4 h-4" /> Add Item
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-primary text-primary-foreground rounded-xl font-medium text-xs sm:text-sm hover:bg-primary/90 transition-colors whitespace-nowrap shrink-0">
+              <Plus className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Add Item</span>
+              <span className="sm:hidden">Add</span>
             </button>
           </div>
         </header>
+
+        {/* Mobile Horizontal Categories Bar */}
+        <div className="md:hidden flex gap-2 overflow-x-auto no-scrollbar p-3 border-b border-border bg-card/30">
+          <button onClick={() => setActiveCategory(null)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${!activeCategory ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground'}`}>
+            All ({itemsData?.length ?? 0})
+          </button>
+          {catData?.map((c) => (
+            <button key={c.id} onClick={() => setActiveCategory(c.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${activeCategory === c.id ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted text-muted-foreground'}`}>
+              {c.name} ({c._count.items})
+            </button>
+          ))}
+        </div>
 
         <div className="flex-1 overflow-hidden flex">
           {/* Categories Sidebar */}

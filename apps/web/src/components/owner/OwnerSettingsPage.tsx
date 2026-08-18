@@ -365,30 +365,31 @@ export function OwnerSettingsPage() {
       </aside>
 
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-background/95 backdrop-blur-sm">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted">
+        <header className="flex items-center justify-between px-3.5 sm:px-5 py-3 border-b border-border bg-background/95 backdrop-blur-sm gap-2 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 shrink">
+            <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-xl hover:bg-muted shrink-0">
               <Menu className="w-5 h-5" />
             </button>
-            <h1 className="font-display font-bold text-xl">Restaurant Settings</h1>
+            <h1 className="font-display font-bold text-base sm:text-xl truncate">Restaurant Settings</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <WaiterBell />
             <button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || isLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 disabled:opacity-60 transition-colors">
-              <Save className="w-4 h-4" />
-              {saveMutation.isPending ? 'Saving...' : 'Save Changes'}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-primary text-primary-foreground rounded-xl font-medium text-xs sm:text-sm hover:bg-primary/90 disabled:opacity-60 transition-colors whitespace-nowrap shrink-0">
+              <Save className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">{saveMutation.isPending ? 'Saving...' : 'Save Changes'}</span>
+              <span className="sm:hidden">{saveMutation.isPending ? '...' : 'Save'}</span>
             </button>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
           <div className="grid lg:grid-cols-12 gap-6 max-w-7xl mx-auto items-start">
             {/* Forms Column */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-7 space-y-6 min-w-0">
               {/* Basic Info */}
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-2xl p-6">
-                <h2 className="font-display font-semibold mb-5">Basic Information</h2>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-2xl p-4 sm:p-6 overflow-hidden">
+                <h2 className="font-display font-semibold mb-5 text-base sm:text-lg">Basic Information</h2>
                 <div className="space-y-4">
                   <div className="grid sm:grid-cols-2 gap-4">
                     <div>
@@ -408,10 +409,10 @@ export function OwnerSettingsPage() {
 
                   <div>
                     <label className="text-sm font-medium text-muted-foreground mb-1.5 block">Restaurant URL Code (Unique Address)</label>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1 flex items-center border border-border rounded-xl overflow-hidden bg-muted/30">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <div className="relative flex-1 flex items-center border border-border rounded-xl overflow-hidden bg-muted/30 min-w-0">
                         <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground z-10" />
-                        <span className="pl-9 pr-2.5 text-xs text-muted-foreground font-mono select-none border-r border-border/60 py-2.5 bg-muted/20 flex items-center whitespace-nowrap">
+                        <span className="pl-9 pr-2 text-xs text-muted-foreground font-mono select-none border-r border-border/60 py-2.5 bg-muted/20 flex items-center whitespace-nowrap shrink-0">
                           /r/
                         </span>
                         <input
@@ -422,35 +423,37 @@ export function OwnerSettingsPage() {
                             setForm(f => ({ ...f, slug: val }));
                           }}
                           placeholder="rest-abc123"
-                          className="flex-1 px-3 py-2.5 bg-transparent text-sm font-mono focus:outline-none"
+                          className="flex-1 px-2.5 py-2.5 bg-transparent text-xs sm:text-sm font-mono focus:outline-none min-w-0"
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const code = 'rest-' + Math.random().toString(36).slice(2, 8);
-                          setForm(f => ({ ...f, slug: code }));
-                          toast.success(`New unique code generated: ${code}`);
-                        }}
-                        className="px-3 py-2.5 bg-primary/10 hover:bg-primary/20 rounded-xl text-xs font-semibold text-primary transition-all border border-primary/20 flex-shrink-0 whitespace-nowrap"
-                        title="Generate a new unique random code"
-                      >
-                        Generate Code
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (form.slug) {
-                            const fullUrl = `${window.location.origin}/r/${form.slug}`;
-                            navigator.clipboard.writeText(fullUrl);
-                            toast.success('Restaurant URL copied! 📋');
-                          }
-                        }}
-                        className="px-3 py-2.5 bg-muted hover:bg-muted/80 rounded-xl text-xs font-medium text-foreground transition-all border border-border flex-shrink-0"
-                        title="Copy Restaurant URL"
-                      >
-                        Copy URL
-                      </button>
+                      <div className="flex gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const code = 'rest-' + Math.random().toString(36).slice(2, 8);
+                            setForm(f => ({ ...f, slug: code }));
+                            toast.success(`New unique code generated: ${code}`);
+                          }}
+                          className="flex-1 sm:flex-none px-3 py-2.5 bg-primary/10 hover:bg-primary/20 rounded-xl text-xs font-semibold text-primary transition-all border border-primary/20 whitespace-nowrap"
+                          title="Generate a new unique random code"
+                        >
+                          Generate Code
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (form.slug) {
+                              const fullUrl = `${window.location.origin}/r/${form.slug}`;
+                              navigator.clipboard.writeText(fullUrl);
+                              toast.success('Restaurant URL copied! 📋');
+                            }
+                          }}
+                          className="flex-1 sm:flex-none px-3 py-2.5 bg-muted hover:bg-muted/80 rounded-xl text-xs font-medium text-foreground transition-all border border-border whitespace-nowrap"
+                          title="Copy Restaurant URL"
+                        >
+                          Copy URL
+                        </button>
+                      </div>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
                       Customer menu link: <strong className="text-foreground font-mono">{typeof window !== 'undefined' ? window.location.origin : ''}/r/{form.slug || 'rest-abc123'}</strong>
