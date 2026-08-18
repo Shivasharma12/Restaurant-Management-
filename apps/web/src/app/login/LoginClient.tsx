@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, Loader2, QrCode, Shield, Store } from 'lucide-react';
-import api from '@/lib/api';
+import api, { API_BASE_URL } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from 'sonner';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -46,15 +46,26 @@ export default function LoginClient() {
   useEffect(() => {
     const error = searchParams.get('error');
     if (error === 'GOOGLE_CLIENT_ID_NOT_CONFIGURED') {
-      toast.error('Google Sign-In is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the server .env file.', {
-        duration: 8000
+      toast.info('Google Sign-In is not configured. Please sign in with Email & Password or use the Live Demo Credentials above.', {
+        id: 'google-auth-notice',
+        duration: 7000,
       });
     }
   }, [searchParams]);
 
+  const handleGoogleAuth = () => {
+    window.location.href = `${API_BASE_URL}/auth/google`;
+  };
+
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
+
+  const fillCredentials = (emailVal: string, passVal: string) => {
+    setValue('email', emailVal, { shouldValidate: true });
+    setValue('password', passVal, { shouldValidate: true });
+    toast.info(`Loaded live credentials for ${emailVal}`);
+  };
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
@@ -102,14 +113,13 @@ export default function LoginClient() {
       }
 
       toast.success(`Welcome back, ${user.name}! 👋`);
-    } catch {
-      // Error handled by interceptor
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.response?.data?.message || err.message || 'Login failed. Please check your credentials.';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
   };
-
-
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
@@ -130,9 +140,9 @@ export default function LoginClient() {
       >
         {/* Left Column: Login Form */}
         <div className="flex flex-col justify-between">
-          <div className="text-center mb-8">
-            <Link href="/" className="inline-flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+          <div className="text-center mb-6">
+            <Link href="/" className="inline-flex items-center gap-2 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
                 <QrCode className="w-5 h-5 text-white" />
               </div>
               <span className="font-display font-bold text-xl text-foreground">EZ- Restaurant</span>
@@ -140,13 +150,49 @@ export default function LoginClient() {
             <h1 className="font-display text-3xl font-bold text-foreground mb-2">
               {restaurantSlug ? 'Customer Login' : isPartner ? 'Partner & Owner Login' : 'Welcome back'}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               {restaurantSlug
                 ? `Sign in to order from ${restaurantSlug.toUpperCase()}`
                 : isPartner
                 ? 'Sign in to manage your restaurant'
                 : 'Sign in to your account'}
             </p>
+          </div>
+
+          {/* Quick Fill Demo Credentials */}
+          <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 backdrop-blur-md">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5" /> Live Demo Credentials
+              </span>
+              <span className="text-[10px] text-muted-foreground">Click to quick-fill</span>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => fillCredentials('admin@qrrestaurant.com', 'Admin@123456')}
+                className="py-1.5 px-2 bg-background/80 hover:bg-amber-500/20 border border-border rounded-lg text-xs font-medium text-foreground transition-all text-center flex flex-col items-center gap-0.5 shadow-sm"
+              >
+                <span className="text-amber-500 font-bold text-[11px]">Admin</span>
+                <span className="text-[10px] text-muted-foreground">Super Admin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fillCredentials('owner@upstates.com', 'Owner@123456')}
+                className="py-1.5 px-2 bg-background/80 hover:bg-orange-500/20 border border-border rounded-lg text-xs font-medium text-foreground transition-all text-center flex flex-col items-center gap-0.5 shadow-sm"
+              >
+                <span className="text-orange-500 font-bold text-[11px]">Owner</span>
+                <span className="text-[10px] text-muted-foreground">Restaurant</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fillCredentials('customer@example.com', 'Customer@123')}
+                className="py-1.5 px-2 bg-background/80 hover:bg-blue-500/20 border border-border rounded-lg text-xs font-medium text-foreground transition-all text-center flex flex-col items-center gap-0.5 shadow-sm"
+              >
+                <span className="text-blue-500 font-bold text-[11px]">Customer</span>
+                <span className="text-[10px] text-muted-foreground">Sample User</span>
+              </button>
+            </div>
           </div>
 
           <div className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-2xl flex-1 flex flex-col justify-center">
@@ -210,9 +256,10 @@ export default function LoginClient() {
             </div>
 
             {/* Google OAuth */}
-            <a
-              href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/auth/google`}
-              className="w-full flex items-center justify-center gap-3 py-3 bg-muted border border-border rounded-xl text-foreground text-sm font-medium hover:bg-accent transition-colors"
+            <button
+              type="button"
+              onClick={handleGoogleAuth}
+              className="w-full flex items-center justify-center gap-3 py-3 bg-muted border border-border rounded-xl text-foreground text-sm font-medium hover:bg-accent transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -221,7 +268,7 @@ export default function LoginClient() {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
               </svg>
               Continue with Google
-            </a>
+            </button>
 
             <p className="text-center text-muted-foreground text-sm mt-5">
               Don't have an account?{' '}

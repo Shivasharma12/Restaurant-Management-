@@ -2,11 +2,42 @@ import axios, { AxiosError } from 'axios';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth.store';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
+export function getApiBaseUrl(): string {
+  const envUrl = process.env.NEXT_PUBLIC_API_URL;
+
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol;
+
+    // 1. Live Render deployment resolution
+    if (hostname.includes('.onrender.com')) {
+      if (!envUrl || envUrl.includes('localhost') || envUrl.includes('127.0.0.1')) {
+        const serverHostname = hostname.replace('-web', '-server');
+        return `${protocol}//${serverHostname}/api/v1`;
+      }
+    }
+
+    // 2. Local development fallback
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      if (envUrl && !envUrl.includes('localhost')) {
+        return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
+      }
+      return 'http://localhost:4000/api/v1';
+    }
+  }
+
+  // 3. Fallback for SSR or custom domains
+  if (envUrl) {
+    return envUrl.endsWith('/api/v1') ? envUrl : `${envUrl.replace(/\/$/, '')}/api/v1`;
+  }
+
+  return 'http://localhost:4000/api/v1';
+}
+
+export const API_BASE_URL = getApiBaseUrl();
 
 if (typeof window !== 'undefined') {
-  console.log('🔌 API Base URL:', API_BASE_URL);
+  console.log('🔌 Dynamic API Base URL resolved:', API_BASE_URL);
 }
 
 export const api = axios.create({

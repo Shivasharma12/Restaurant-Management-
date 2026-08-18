@@ -55,15 +55,24 @@ export async function register(req: Request, res: Response, next: NextFunction):
       restaurantSlug?: string;
     };
 
+    const normalizedEmail = (email || '').toLowerCase().trim();
     const finalRole = (role as 'CUSTOMER' | 'RESTAURANT_OWNER') ?? 'CUSTOMER';
 
     // Scoped email for customers
     const dbEmail = (finalRole === 'CUSTOMER' && restaurantSlug)
-      ? `${restaurantSlug}:${email}`
-      : email;
+      ? `${restaurantSlug}:${normalizedEmail}`
+      : normalizedEmail;
 
     // Check if email already exists
-    const existingUser = await prisma.user.findUnique({ where: { email: dbEmail } });
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: dbEmail },
+          { email: normalizedEmail },
+        ],
+      },
+    });
+
     if (existingUser) {
       throw new AppError('An account with this email already exists.', 409, 'EMAIL_EXISTS');
     }
@@ -120,20 +129,6 @@ export async function register(req: Request, res: Response, next: NextFunction):
       });
     }
 
-    // Send verification email
-    /*
-    try {
-      await sendVerificationEmail(email, name, verifyToken);
-    } catch (emailError: any) {
-      if (process.env.NODE_ENV === 'production') {
-        throw emailError;
-      }
-      console.warn(`[DEV ONLY] Failed to send verification email: ${emailError.message}`);
-      const verifyUrl = `${process.env.CLIENT_URL ?? 'http://localhost:3000'}/verify-email?token=${verifyToken}`;
-      console.log(`[DEV ONLY] Verification link: ${verifyUrl}`);
-    }
-    */
-
     const cleanUser = {
       ...user,
       email: user.email.includes(':') ? user.email.split(':')[1] : user.email,
@@ -155,11 +150,32 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
   try {
     const { email, password, restaurantSlug } = req.body as { email: string; password: string; restaurantSlug?: string };
 
-    const dbEmail = restaurantSlug ? `${restaurantSlug}:${email}` : email;
+    if (!email || !password) {
+      throw new AppError('Email and password are required.', 400, 'INVALID_CREDENTIALS');
+    }
 
-    const user = await prisma.user.findFirst({
-      where: { email: dbEmail, deletedAt: null },
-    });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // 1. Try scoped email first if restaurantSlug is provided
+    let user = restaurantSlug
+      ? await prisma.user.findFirst({
+          where: { email: `${restaurantSlug}:${normalizedEmail}`, deletedAt: null },
+        })
+      : null;
+
+    // 2. Fallback to exact raw email (Super Admin, Restaurant Owner, Global Customer)
+    if (!user) {
+      user = await prisma.user.findFirst({
+        where: { email: normalizedEmail, deletedAt: null },
+      });
+    }
+
+    // 3. Fallback: Search any scoped email ending with :normalizedEmail if no restaurantSlug provided
+    if (!user && !restaurantSlug) {
+      user = await prisma.user.findFirst({
+        where: { email: { endsWith: `:${normalizedEmail}` }, deletedAt: null },
+      });
+    }
 
     if (!user || !user.passwordHash) {
       throw new AppError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
@@ -169,16 +185,6 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
     if (!isValidPassword) {
       throw new AppError('Invalid email or password.', 401, 'INVALID_CREDENTIALS');
     }
-
-    /*
-    if (!user.isVerified) {
-      throw new AppError(
-        'Please verify your email before logging in.',
-        403,
-        'EMAIL_NOT_VERIFIED'
-      );
-    }
-    */
 
     const tokenPayload = {
       id: user.id,
@@ -261,9 +267,19 @@ export async function forgotPassword(
   try {
     const { email, restaurantSlug } = req.body as { email: string; restaurantSlug?: string };
 
-    const dbEmail = restaurantSlug ? `${restaurantSlug}:${email}` : email;
+    const normalizedEmail = (email || '').toLowerCase().trim();
 
-    const user = await prisma.user.findFirst({ where: { email: dbEmail, deletedAt: null } });
+    let user = restaurantSlug
+      ? await prisma.user.findFirst({ where: { email: `${restaurantSlug}:${normalizedEmail}`, deletedAt: null } })
+      : null;
+
+    if (!user) {
+      user = await prisma.user.findFirst({ where: { email: normalizedEmail, deletedAt: null } });
+    }
+
+    if (!user && !restaurantSlug) {
+      user = await prisma.user.findFirst({ where: { email: { endsWith: `:${normalizedEmail}` }, deletedAt: null } });
+    }
 
     // Always respond with success (don't leak user existence)
     if (user) {
@@ -455,8 +471,10 @@ export function googleAuth(req: Request, res: Response): void {
   const redirectUri = process.env.GOOGLE_CALLBACK_URL || `${protocol}://${host}/api/v1/auth/google/callback`;
 
   if (!clientId || clientId.startsWith('your-google-client-id')) {
-    const frontendUrl = process.env.CLIENT_URL ?? 'http://localhost:3001';
-    return res.redirect(`${frontendUrl}/login?error=GOOGLE_CLIENT_ID_NOT_CONFIGURED`);
+    const referer = req.get('referer');
+    const origin = req.get('origin');
+    const frontendUrl = process.env.CLIENT_URL || (referer ? new URL(referer).origin : null) || (origin ? new URL(origin).origin : null) || `${protocol}://${host}`;
+    return res.redirect(`${frontendUrl.replace(/\/$/, '')}/login?error=GOOGLE_CLIENT_ID_NOT_CONFIGURED`);
   }
 
   const scope = 'openid email profile';
@@ -546,8 +564,10 @@ export async function googleCallback(
     setRefreshTokenCookie(res, newRefreshToken);
 
     // Redirect to frontend with token
-    const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3001';
-    res.redirect(`${clientUrl}/auth/callback?token=${accessToken}`);
+    const referer = req.get('referer');
+    const origin = req.get('origin');
+    const clientUrl = process.env.CLIENT_URL || (referer ? new URL(referer).origin : null) || (origin ? new URL(origin).origin : null) || `${protocol}://${host}`;
+    res.redirect(`${clientUrl.replace(/\/$/, '')}/auth/callback?token=${accessToken}`);
   } catch (error) {
     next(error);
   }

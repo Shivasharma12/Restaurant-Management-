@@ -8,7 +8,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, Loader2, QrCode, User, Phone } from 'lucide-react';
-import api from '@/lib/api';
+import api, { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
 
 const registerSchema = z.object({
@@ -39,11 +39,16 @@ export default function RegisterClient() {
   useEffect(() => {
     const error = searchParams.get('error');
     if (error === 'GOOGLE_CLIENT_ID_NOT_CONFIGURED') {
-      toast.error('Google Sign-In is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the server .env file.', {
-        duration: 8000
+      toast.info('Google Sign-In is not configured. Please sign up using email and password below.', {
+        id: 'google-auth-notice',
+        duration: 7000,
       });
     }
   }, [searchParams]);
+
+  const handleGoogleAuth = () => {
+    window.location.href = `${API_BASE_URL}/auth/google`;
+  };
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -182,9 +187,10 @@ export default function RegisterClient() {
           </div>
 
           {/* Google OAuth */}
-          <a
-            href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/auth/google`}
-            className="w-full flex items-center justify-center gap-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-medium hover:bg-white/10 transition-colors"
+          <button
+            type="button"
+            onClick={handleGoogleAuth}
+            className="w-full flex items-center justify-center gap-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-medium hover:bg-white/10 transition-colors cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -193,7 +199,7 @@ export default function RegisterClient() {
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             Continue with Google
-          </a>
+          </button>
 
           <p className="text-center text-slate-400 text-sm mt-5">
             Already have an account?{' '}
