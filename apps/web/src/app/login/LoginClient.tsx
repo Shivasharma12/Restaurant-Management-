@@ -211,7 +211,7 @@ export default function LoginClient() {
 
             {/* Google OAuth */}
             <a
-              href={`${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
+              href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/auth/google`}
               className="w-full flex items-center justify-center gap-3 py-3 bg-muted border border-border rounded-xl text-foreground text-sm font-medium hover:bg-accent transition-colors"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">

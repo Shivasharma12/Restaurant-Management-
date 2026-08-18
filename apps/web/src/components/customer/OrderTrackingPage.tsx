@@ -17,7 +17,10 @@ import {
   Copy,
   Sparkles,
   AlertTriangle,
+  Bell,
 } from 'lucide-react';
+import { CustomerNotificationModal } from './CustomerNotificationModal';
+import { getImageUrl } from '@/lib/image';
 import { io, Socket } from 'socket.io-client';
 import api from '@/lib/api';
 import Link from 'next/link';
@@ -127,7 +130,20 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [showPaymentNotReceivedModal, setShowPaymentNotReceivedModal] = useState(false);
-  const [paymentNotReceivedAmount, setPaymentNotReceivedAmount] = useState<number>(0);
+  const [paymentNotReceivedAmount, setPaymentNotReceivedAmount] = useState<number | null>(null);
+  const [showNotifModal, setShowNotifModal] = useState(false);
+
+  // Fetch unread notifications count for customer
+  const { data: customerNotifData } = useQuery({
+    queryKey: ['customer-notifications-count'],
+    queryFn: async () => {
+      const res = await api.get('/profile/notifications');
+      return res.data.data as { unreadCount: number };
+    },
+    refetchInterval: 12000,
+  });
+
+  const unreadNotifCount = customerNotifData?.unreadCount ?? 0;
 
   const qc = useQueryClient();
   const submitReviewMutation = useMutation({
@@ -165,21 +181,63 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
   // ── Socket.io real-time tracking ──────────────────────────────────────────
   useEffect(() => {
     const socket: Socket = io(
-      process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') ?? 'http://localhost:4000',
-      { transports: ['websocket'], withCredentials: true },
+      process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') ?? 'http://localhost:4000',
+      { transports: ['websocket', 'polling'], withCredentials: true },
     );
 
     // ✅ Correct event name: 'join:order'
     socket.emit('join:order', orderId);
 
-    // ✅ Correct event name: 'order:status_updated'
-    socket.on('order:status_updated', (data: { orderId: string; status: string }) => {
+    // ✅ Real-time order, payment, and add-on status updates
+    socket.on('order:status_updated', (data: {
+      orderId: string;
+      status?: string;
+      addOnStatus?: string | null;
+      paymentStatus?: string;
+      reason?: string;
+    }) => {
       if (data.orderId === orderId) {
-        setCurrentStatus(data.status);
-        toast.info(`Order status: ${data.status.replace(/_/g, ' ')}`, { icon: '🍽️' });
-        if (data.status === 'DELIVERED') {
-          setShowRating(true);
+        if (data.status) {
+          setCurrentStatus(data.status);
+          const statusLabels: Record<string, string> = {
+            CONFIRMED: '🎉 Order Confirmed!',
+            PREPARING: '👨‍🍳 Kitchen is preparing your order!',
+            BAKING: '🔥 Order is in the kitchen!',
+            READY: '🍽️ Order Ready!',
+            ON_THE_WAY: '🚴 Order is on the way!',
+            DELIVERED: '✅ Order Served / Delivered!',
+            CANCELLED: '❌ Order Cancelled',
+          };
+          if (data.status === 'CANCELLED') {
+            toast.error(`Order Cancelled${data.reason ? `: ${data.reason}` : ''}`, { duration: 7000, id: 'order-status-cancelled' });
+          } else {
+            toast.success(statusLabels[data.status] ?? `Order status: ${data.status.replace(/_/g, ' ')}`, { id: 'order-status-update' });
+          }
+          if (data.status === 'DELIVERED') {
+            setShowRating(true);
+          }
         }
+
+        if (data.paymentStatus === 'PAID') {
+          toast.success('✅ Payment Confirmed by Restaurant!', { id: 'payment-confirmed-toast' });
+        } else if (data.paymentStatus === 'FAILED') {
+          toast.error('⚠️ Payment Not Confirmed by Restaurant.', { id: 'payment-failed-toast' });
+        }
+
+        if (data.addOnStatus) {
+          const addonLabels: Record<string, string> = {
+            PREPARING: '👨‍🍳 Add-on items are being prepared!',
+            READY: '🍽️ Add-on items are ready to serve!',
+            DELIVERED: '✅ Add-on items served!',
+            CANCELLED: '🚫 Add-on items have been cancelled.',
+          };
+          if (data.addOnStatus === 'CANCELLED') {
+            toast.error(addonLabels[data.addOnStatus], { id: 'addon-cancelled-toast' });
+          } else {
+            toast.info(addonLabels[data.addOnStatus] ?? `Add-on status: ${data.addOnStatus}`, { id: 'addon-status-toast' });
+          }
+        }
+
         qc.invalidateQueries({ queryKey: ['order', orderId] });
       }
     });
@@ -275,10 +333,26 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
         style={{ background: `linear-gradient(135deg, ${themeColor}15, ${themeColor}05)` }}
       >
         <div className="max-w-lg mx-auto">
-          <p className="text-muted-foreground text-sm mb-1">
-            Order #{order.id.slice(-8).toUpperCase()}
-          </p>
-          <h1 className="font-display text-2xl font-bold">{order.restaurant.name}</h1>
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-muted-foreground text-sm mb-1">
+                Order #{order.id.slice(-8).toUpperCase()}
+              </p>
+              <h1 className="font-display text-2xl font-bold">{order.restaurant.name}</h1>
+            </div>
+            <button
+              onClick={() => setShowNotifModal(true)}
+              className="relative p-2 bg-card hover:bg-muted border border-border rounded-xl text-foreground transition-all shadow-xs"
+              title="View Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-extrabold flex items-center justify-center animate-pulse">
+                  {unreadNotifCount}
+                </span>
+              )}
+            </button>
+          </div>
 
           {/* Dine-In: show table number */}
           {!isDeliveryOrder && order.tableNumber && (
@@ -318,35 +392,45 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
       <div className="max-w-lg mx-auto px-4 space-y-5">
         {/* Add-on Order Journey Banner */}
         {order.addOnStatus && (
-          <div className="bg-gradient-to-r from-blue-500/10 via-amber-500/10 to-emerald-500/10 border-2 border-blue-500/30 rounded-2xl p-5 shadow-lg space-y-3">
+          <div className={`border-2 rounded-2xl p-5 shadow-lg space-y-3 ${
+            order.addOnStatus === 'CANCELLED'
+              ? 'bg-red-500/10 border-red-500/30'
+              : 'bg-gradient-to-r from-blue-500/10 via-amber-500/10 to-emerald-500/10 border-blue-500/30'
+          }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-display font-bold text-sm text-foreground">
-                <Sparkles className="w-5 h-5 text-blue-500 animate-pulse" />
+                <Sparkles className={`w-5 h-5 ${order.addOnStatus === 'CANCELLED' ? 'text-red-500' : 'text-blue-500 animate-pulse'}`} />
                 <span>⚡ Add-on Items Journey</span>
               </div>
-              <span className="px-3 py-1 rounded-full text-xs font-extrabold bg-blue-500 text-white shadow-sm">
-                {order.addOnStatus === 'PREPARING' ? '👨‍🍳 Preparing Add-ons' : order.addOnStatus === 'READY' ? '🍽️ Ready to Serve' : '✅ Add-ons Served'}
+              <span className={`px-3 py-1 rounded-full text-xs font-extrabold text-white shadow-sm ${
+                order.addOnStatus === 'CANCELLED' ? 'bg-red-500' : 'bg-blue-500'
+              }`}>
+                {order.addOnStatus === 'CANCELLED' ? '🚫 Add-ons Cancelled' : order.addOnStatus === 'PREPARING' ? '👨‍🍳 Preparing Add-ons' : order.addOnStatus === 'READY' ? '🍽️ Ready to Serve' : '✅ Add-ons Served'}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
-              {order.addOnStatus === 'PREPARING' 
+              {order.addOnStatus === 'CANCELLED'
+                ? 'Your add-on items have been cancelled by the restaurant.'
+                : order.addOnStatus === 'PREPARING' 
                 ? 'The kitchen has received your add-on items and is preparing them right now!' 
                 : order.addOnStatus === 'READY' 
                 ? 'Your add-on items are ready and will be served to your table shortly!' 
                 : 'Your add-on items have been served. Enjoy your meal!'}
             </p>
             {/* Add-on Progress Steps */}
-            <div className="grid grid-cols-3 gap-2 pt-2 text-center text-[11px] font-bold">
-              <div className={`p-2 rounded-xl border transition-all ${order.addOnStatus === 'PREPARING' ? 'bg-blue-500 text-white border-blue-600 shadow-md scale-105' : 'bg-muted/50 text-muted-foreground border-border'}`}>
-                1. Preparing
+            {order.addOnStatus !== 'CANCELLED' && (
+              <div className="grid grid-cols-3 gap-2 pt-2 text-center text-[11px] font-bold">
+                <div className={`p-2 rounded-xl border transition-all ${order.addOnStatus === 'PREPARING' ? 'bg-blue-500 text-white border-blue-600 shadow-md scale-105' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                  1. Preparing
+                </div>
+                <div className={`p-2 rounded-xl border transition-all ${order.addOnStatus === 'READY' ? 'bg-amber-500 text-white border-amber-600 shadow-md scale-105' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                  2. Ready to Serve
+                </div>
+                <div className={`p-2 rounded-xl border transition-all ${order.addOnStatus === 'DELIVERED' ? 'bg-emerald-500 text-white border-emerald-600 shadow-md scale-105' : 'bg-muted/50 text-muted-foreground border-border'}`}>
+                  3. Served
+                </div>
               </div>
-              <div className={`p-2 rounded-xl border transition-all ${order.addOnStatus === 'READY' ? 'bg-amber-500 text-white border-amber-600 shadow-md scale-105' : 'bg-muted/50 text-muted-foreground border-border'}`}>
-                2. Ready to Serve
-              </div>
-              <div className={`p-2 rounded-xl border transition-all ${order.addOnStatus === 'DELIVERED' ? 'bg-emerald-500 text-white border-emerald-600 shadow-md scale-105' : 'bg-muted/50 text-muted-foreground border-border'}`}>
-                3. Served
-              </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -425,7 +509,7 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
             {order.restaurant.paymentQrCode && (
               <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl border border-border max-w-[200px] mx-auto">
                 <img
-                  src={order.restaurant.paymentQrCode}
+                  src={getImageUrl(order.restaurant.paymentQrCode)}
                   alt="Restaurant Payment QR"
                   className="w-40 h-40 object-contain"
                 />
@@ -695,6 +779,11 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
           )}
         </div>
       </div>
+      {/* Customer Notification Modal */}
+      <CustomerNotificationModal
+        isOpen={showNotifModal}
+        onClose={() => setShowNotifModal(false)}
+      />
     </div>
   );
 }

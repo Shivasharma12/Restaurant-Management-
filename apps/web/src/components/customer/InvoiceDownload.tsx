@@ -248,7 +248,7 @@ export function InvoiceDownload({ order, themeColor = '#E85D04' }: InvoiceDownlo
               <div class="meta-section-title">Invoice Details</div>
               <div class="meta-content">
                 Date: ${formattedDate}<br>
-                Payment Method: ${order.paymentMethod === 'RAZORPAY' ? 'Razorpay (Online)' : order.paymentMethod === 'WALLET' ? 'Wallet' : order.paymentMethod === 'PAY_TO_WAITER' ? 'Pay to Waiter' : 'Pay on Counter'}<br>
+                Payment Method: ${order.paymentMethod === 'RAZORPAY' ? 'Pay Direct to Owner (Online)' : order.paymentMethod === 'WALLET' ? 'Wallet' : order.paymentMethod === 'PAY_TO_WAITER' ? 'Pay to Waiter' : 'Pay on Counter'}<br>
                 Payment Status: <strong>${order.paymentStatus}</strong>
               </div>
             </div>

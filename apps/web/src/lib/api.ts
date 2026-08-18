@@ -127,17 +127,33 @@ api.interceptors.response.use(
         }
         processQueue(refreshError as Error, null);
         
-        // Only log out if backend explicitly returns 401 (invalid/expired refresh token)
+        // Only log out & redirect if on owner/admin dashboard routes
         if (refreshError.response?.status === 401) {
           useAuthStore.getState().logout();
           if (typeof window !== 'undefined') {
-            window.location.href = '/login';
+            const currentPath = window.location.pathname;
+            if (currentPath.startsWith('/owner') || currentPath.startsWith('/admin')) {
+              window.location.href = '/login';
+            }
           }
         }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }
+    }
+
+    // Handle network / server unreachable errors
+    const isNetworkError =
+      error.code === 'ERR_NETWORK' ||
+      error.message === 'Network Error' ||
+      !error.response;
+
+    if (isNetworkError) {
+      toast.error('Unable to connect to backend server. Please verify the server is running.', {
+        id: 'network-error',
+      });
+      return Promise.reject(error);
     }
 
     // Show error toast for server errors

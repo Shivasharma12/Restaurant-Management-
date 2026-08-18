@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { toast } from 'sonner';
 import { WaiterBell } from '@/components/owner/WaiterBell';
+import { getImageUrl } from '@/lib/image';
 import QRCode from 'qrcode';
 
 const NAV_ITEMS = [
@@ -583,7 +584,7 @@ export function OwnerSettingsPage() {
                 <div className="space-y-5">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-2">Logo</p>
-                    {(logoPreviewUrl || form.logo || data?.logo) && <img src={logoPreviewUrl || form.logo || data?.logo || ''} alt="Logo" className="w-20 h-20 rounded-xl object-cover border border-border mb-2 bg-white" />}
+                    {(logoPreviewUrl || form.logo || data?.logo) && <img src={logoPreviewUrl || getImageUrl(form.logo || data?.logo || '')} alt="Logo" className="w-20 h-20 rounded-xl object-cover border border-border mb-2 bg-white" />}
                     <div className="flex gap-3 items-center">
                       <input type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] ?? null)}
                         className="flex-1 px-3 py-2 text-sm text-muted-foreground border border-dashed border-border rounded-xl" />
@@ -597,7 +598,7 @@ export function OwnerSettingsPage() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-2">Banner</p>
-                    {(bannerPreviewUrl || form.banner || data?.banner) && <img src={bannerPreviewUrl || form.banner || data?.banner || ''} alt="Banner" className="w-full h-28 rounded-xl object-cover border border-border mb-2 bg-white" />}
+                    {(bannerPreviewUrl || form.banner || data?.banner) && <img src={bannerPreviewUrl || getImageUrl(form.banner || data?.banner || '')} alt="Banner" className="w-full h-28 rounded-xl object-cover border border-border mb-2 bg-white" />}
                     <div className="flex gap-3 items-center">
                       <input type="file" accept="image/*" onChange={(e) => setBannerFile(e.target.files?.[0] ?? null)}
                         className="flex-1 px-3 py-2 text-sm text-muted-foreground border border-dashed border-border rounded-xl" />
@@ -632,7 +633,7 @@ export function OwnerSettingsPage() {
                     <div className="flex gap-4 items-start">
                       {(paymentQrPreviewUrl || form.paymentQrCode || data?.paymentQrCode) && (
                         <img
-                          src={paymentQrPreviewUrl || form.paymentQrCode || data?.paymentQrCode || ''}
+                          src={paymentQrPreviewUrl || getImageUrl(form.paymentQrCode || data?.paymentQrCode || '')}
                           alt="Payment QR"
                           className="w-28 h-28 object-contain border border-border rounded-xl bg-white p-1 flex-shrink-0"
                         />

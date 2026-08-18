@@ -12,7 +12,9 @@ import { MenuItemCard } from './MenuItemCard';
 import { CartDrawer } from './CartDrawer';
 import { AIChatbot } from './AIChatbot';
 import { AIRecommendations } from './AIRecommendations';
+import { CustomerNotificationModal } from './CustomerNotificationModal';
 import { toast } from 'sonner';
+import { Bell } from 'lucide-react';
 import Link from 'next/link';
 import { getDetailedStatus, formatTime12h } from '@/utils/operatingHours';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -189,6 +191,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
   const { items: cartItems, itemCount, setRestaurant } = useCartStore();
   const { user: rawUser, logout } = useAuthStore();
   const [showLoyaltyModal, setShowLoyaltyModal] = useState(false);
+  const [showNotifModal, setShowNotifModal] = useState(false);
 
   // Fetch latest user profile to keep loyalty points synced in real-time
   const { data: userProfileData } = useQuery({
@@ -200,6 +203,19 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
     enabled: !!rawUser,
     refetchInterval: 10000,
   });
+
+  // Fetch unread notifications count for customer
+  const { data: customerNotifData } = useQuery({
+    queryKey: ['customer-notifications-count'],
+    queryFn: async () => {
+      const res = await api.get('/profile/notifications');
+      return res.data.data as { unreadCount: number };
+    },
+    enabled: !!rawUser,
+    refetchInterval: 12000,
+  });
+
+  const unreadNotifCount = customerNotifData?.unreadCount ?? 0;
 
   const currentPoints = userProfileData?.loyaltyPoints ?? rawUser?.loyaltyPoints ?? 0;
 
@@ -599,6 +615,22 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
               <span>⭐ Loyalty Points</span>
             )}
           </button>
+
+          {/* Notifications Bell Button */}
+          {activeUser && (
+            <button
+              onClick={() => setShowNotifModal(true)}
+              className="relative p-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-white transition-all backdrop-blur-md active:scale-95 flex items-center justify-center"
+              title="Notifications"
+            >
+              <Bell className="w-3.5 h-3.5 text-white" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 text-white rounded-full text-[9px] font-extrabold flex items-center justify-center animate-pulse">
+                  {unreadNotifCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {activeUser ? (
             <div className="flex items-center gap-1 sm:gap-2">
@@ -1360,6 +1392,12 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
           </div>
         )}
       </AnimatePresence>
+
+      {/* Customer Notification Modal */}
+      <CustomerNotificationModal
+        isOpen={showNotifModal}
+        onClose={() => setShowNotifModal(false)}
+      />
     </div>
   );
 }

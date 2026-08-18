@@ -13,6 +13,7 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getImageUrl } from '@/lib/image';
 
 declare global {
   interface Window {
@@ -353,8 +354,10 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
             razorpayPaymentId: response.razorpay_payment_id || `pay_${Date.now()}`,
             razorpaySignature: response.razorpay_signature || 'direct_signature',
           });
-          queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-          queryClient.invalidateQueries({ queryKey: ['user-profile-loyalty'] });
+          if (activeUser) {
+            queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+            queryClient.invalidateQueries({ queryKey: ['user-profile-loyalty'] });
+          }
           saveOrderToRecent(orderId, restaurantSlug);
           clearCart();
           toast.success('Payment successful! 🎉');
@@ -398,8 +401,10 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
         razorpayPaymentId: `pay_mock_${Math.random().toString(36).substring(2, 15)}`,
         razorpaySignature: 'mock_signature',
       });
-      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
-      queryClient.invalidateQueries({ queryKey: ['user-profile-loyalty'] });
+      if (activeUser) {
+        queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+        queryClient.invalidateQueries({ queryKey: ['user-profile-loyalty'] });
+      }
       saveOrderToRecent(mockPaymentData.orderId, restaurantSlug);
       clearCart();
       toast.success('Payment simulated successfully! 🎉');
@@ -866,8 +871,13 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
                         <CreditCard className="w-4 h-4" />
                       </div>
                       <div>
-                        <p className="font-semibold text-xs text-foreground font-display">Pay using Razorpay</p>
-                        <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">Standard online instant payment</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="font-semibold text-xs text-foreground font-display">Pay using Razorpay</p>
+                          <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full uppercase tracking-wider">
+                            Coming Soon
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">Standard online instant payment (Coming Soon)</p>
                       </div>
                       {onlinePaymentType === 'RAZORPAY' && (
                         <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
@@ -898,7 +908,7 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
             {restaurant.paymentQrCode && (
               <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl border border-border max-w-[200px] mx-auto">
                 <img
-                  src={restaurant.paymentQrCode}
+                  src={getImageUrl(restaurant.paymentQrCode)}
                   alt="Restaurant Payment QR"
                   className="w-40 h-40 object-contain"
                 />
@@ -1012,7 +1022,17 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
         )}
 
         {/* Guest or user form or login required prompt */}
-        {diningOption === 'DELIVERY' && !activeUser ? (
+        {selectedPayment === 'RAZORPAY' && onlinePaymentType === 'RAZORPAY' ? (
+          <div className="bg-card border border-amber-500/20 rounded-2xl p-6 text-center space-y-3 shadow-sm relative overflow-hidden">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto text-amber-500 text-xl font-bold">
+              💳
+            </div>
+            <h3 className="font-display font-bold text-base text-foreground">Razorpay Online Payment Coming Soon</h3>
+            <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
+              Razorpay payment gateway integration is coming soon. Please select <strong>Pay Direct to Owner</strong>, <strong>Pay on Counter</strong>, or <strong>Pay to Waiter</strong> to complete your order.
+            </p>
+          </div>
+        ) : diningOption === 'DELIVERY' && !activeUser ? (
           <div className="bg-card border border-border rounded-2xl p-6 text-center space-y-4 shadow-xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent pointer-events-none" />
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary text-2xl">
@@ -1159,13 +1179,6 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
               </div>
             )}
 
-            <div className="text-sm text-muted-foreground">
-              Already have an account?{' '}
-              <Link href={`/login?restaurant=${restaurantSlug}`} className="text-primary font-medium underline">
-                Log in
-              </Link>{' '}
-              for loyalty points & order history.
-            </div>
 
             <button
               type="submit"
@@ -1280,7 +1293,7 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
                     {restaurant?.paymentQrCode && (
                       <div className="flex flex-col items-center justify-center p-3 bg-white rounded-2xl border border-border max-w-[180px] mx-auto">
                         <img
-                          src={restaurant.paymentQrCode}
+                          src={getImageUrl(restaurant.paymentQrCode)}
                           alt="Restaurant Payment QR"
                           className="w-36 h-36 object-contain"
                         />

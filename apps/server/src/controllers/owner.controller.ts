@@ -617,6 +617,9 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
       if (dateField) {
         updateData[dateField] = new Date();
       }
+      if (status === 'CANCELLED' && order.addOnStatus) {
+        updateData.addOnStatus = 'CANCELLED';
+      }
     }
 
     if (addOnStatus !== undefined) {
@@ -637,7 +640,7 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
       updatedAt: updatedOrder.updatedAt.toISOString(),
     });
 
-    // Notify customer
+    // Notify customer on status update
     if (status && order.userId) {
       const statusMessages: Record<string, string> = {
         CONFIRMED: 'Your order has been confirmed! 🎉',
@@ -663,6 +666,35 @@ export async function updateOrderStatus(req: AuthenticatedRequest, res: Response
         type: 'ORDER_STATUS',
         title: `Order ${status}`,
         message: statusMessages[status],
+        orderId: id,
+      });
+    }
+
+    // Notify customer on add-on status update
+    if (addOnStatus && order.userId) {
+      const addOnMessages: Record<string, string> = {
+        PREPARING: 'Your add-on items are being prepared! 👨‍🍳',
+        READY: 'Your add-on items are ready to serve! 🍽️',
+        DELIVERED: 'Your add-on items have been served! ✅',
+        CANCELLED: 'Your add-on items have been cancelled. 🚫',
+      };
+
+      const msg = addOnMessages[addOnStatus] ?? `Add-on status updated to ${addOnStatus}`;
+
+      await prisma.notification.create({
+        data: {
+          userId: order.userId,
+          restaurantId: restaurant.id,
+          type: 'ORDER_STATUS',
+          title: `Add-ons ${addOnStatus}`,
+          message: msg,
+        },
+      });
+
+      emitNotification(order.userId, {
+        type: 'ORDER_STATUS',
+        title: `Add-ons ${addOnStatus}`,
+        message: msg,
         orderId: id,
       });
     }
@@ -739,6 +771,25 @@ export async function confirmPayment(req: AuthenticatedRequest, res: Response, n
       updatedAt: new Date().toISOString(),
     });
 
+    if (order.userId) {
+      await prisma.notification.create({
+        data: {
+          userId: order.userId,
+          restaurantId: restaurant.id,
+          type: 'PAYMENT_RECEIPT',
+          title: '✅ Payment Confirmed!',
+          message: `Your payment of ₹${Number(order.total).toFixed(2)} has been confirmed by the restaurant!`,
+        },
+      });
+
+      emitNotification(order.userId, {
+        type: 'PAYMENT_RECEIPT',
+        title: '✅ Payment Confirmed!',
+        message: `Your payment of ₹${Number(order.total).toFixed(2)} has been confirmed!`,
+        orderId: id,
+      });
+    }
+
     res.json({ success: true, message: 'Payment confirmed successfully.' });
   } catch (error) { next(error); }
 }
@@ -757,8 +808,18 @@ export async function rejectPayment(req: AuthenticatedRequest, res: Response, ne
       throw new AppError('Payment is already marked as paid.', 400, 'ALREADY_PAID');
     }
 
+    await prisma.order.update({
+      where: { id },
+      data: { paymentStatus: 'FAILED' },
+    });
+
     // Emit real-time socket event to the customer on this order's tracking page
     emitPaymentNotReceived(id, Number(order.total));
+    emitOrderStatusUpdate(id, restaurant.id, {
+      orderId: id,
+      paymentStatus: 'FAILED',
+      updatedAt: new Date().toISOString(),
+    });
 
     // Also send an in-app notification if there's a userId
     if (order.userId) {

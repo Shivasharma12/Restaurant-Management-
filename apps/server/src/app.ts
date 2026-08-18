@@ -37,6 +37,8 @@ export const allowedOrigins = [
   process.env.CLIENT_URL?.replace(/\/$/, ''),
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
 ].filter(Boolean) as string[];
 
 app.use(
@@ -49,6 +51,8 @@ app.use(
       
       if (
         allowedOrigins.includes(normalizedOrigin) ||
+        normalizedOrigin.startsWith('http://localhost:') ||
+        normalizedOrigin.startsWith('http://127.0.0.1:') ||
         normalizedOrigin.endsWith('.up.railway.app') ||
         normalizedOrigin.endsWith('.onrender.com') ||
         process.env.NODE_ENV !== 'production'
@@ -57,7 +61,7 @@ app.use(
       }
       
       console.warn(`[CORS Blocked] Origin: ${origin}. Allowed:`, allowedOrigins);
-      callback(new Error(`CORS: origin ${origin} not allowed`));
+      callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

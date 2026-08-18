@@ -68,6 +68,8 @@ async function bootstrap() {
           const normalizedOrigin = origin.replace(/\/$/, '');
           if (
             allowedOrigins.includes(normalizedOrigin) ||
+            normalizedOrigin.startsWith('http://localhost:') ||
+            normalizedOrigin.startsWith('http://127.0.0.1:') ||
             normalizedOrigin.endsWith('.up.railway.app') ||
             normalizedOrigin.endsWith('.onrender.com') ||
             process.env.NODE_ENV !== 'production'

@@ -45,28 +45,29 @@ export async function uploadImageToCloudinary(
     apiSecret !== 'your-cloudinary-api-secret';
 
   if (!isConfigured) {
-    logger.warn('⚠️ Cloudinary is not configured or using placeholders. Falling back to local storage.');
+    logger.warn('⚠️ Cloudinary is not configured. Using Base64 Data URL fallback for live/production compatibility.');
     
-    const uploadsDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-    
-    // Create a unique sanitized filename
+    // Save to local disk as backup if directory is writable
     const sanitizedFolder = folder.replace(/[^a-zA-Z0-9-_]/g, '_');
     const sanitizedPublicId = publicId ? publicId.replace(/[^a-zA-Z0-9-_]/g, '_') : Date.now().toString();
     const filename = `${sanitizedFolder}_${sanitizedPublicId}.png`;
-    const filePath = path.join(uploadsDir, filename);
     
-    fs.writeFileSync(filePath, buffer);
+    try {
+      const uploadsDir = path.join(__dirname, '../../uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(uploadsDir, filename), buffer);
+    } catch (e) {
+      logger.warn('Could not write local upload file:', e);
+    }
     
-    const apiUrl = process.env.API_URL || 'http://localhost:4000';
-    const url = `${apiUrl}/uploads/${filename}`;
-    
-    return { url, publicId: filename };
+    // Return Base64 Data URL so images display reliably on all environments (HTTPS live, local, mobile)
+    const base64Url = `data:image/png;base64,${buffer.toString('base64')}`;
+    return { url: base64Url, publicId: filename };
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const uploadStream = cloudinaryV2.uploader.upload_stream(
       {
         folder: `qr-restaurant/${folder}`,
@@ -79,12 +80,10 @@ export async function uploadImageToCloudinary(
         overwrite: true,
       },
       (error, result: UploadApiResponse | undefined) => {
-        if (error) {
-          reject(new AppError('Image upload failed: ' + error.message, 500, 'UPLOAD_FAILED'));
-          return;
-        }
-        if (!result) {
-          reject(new AppError('Upload returned no result', 500, 'UPLOAD_FAILED'));
+        if (error || !result) {
+          logger.warn(`Cloudinary upload failed (${error?.message || 'No result'}). Falling back to Base64 Data URL.`);
+          const base64Url = `data:image/png;base64,${buffer.toString('base64')}`;
+          resolve({ url: base64Url, publicId: publicId || Date.now().toString() });
           return;
         }
         resolve({ url: result.secure_url, publicId: result.public_id });

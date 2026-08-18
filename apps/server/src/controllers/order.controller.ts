@@ -680,6 +680,14 @@ export async function verifyPayment(
       include: { restaurant: true },
     });
 
+    // Notify restaurant owner and update order status in real-time
+    emitOrderStatusUpdate(orderId, order.restaurantId, {
+      orderId,
+      paymentStatus: 'PAID',
+      updatedAt: new Date().toISOString(),
+    });
+    emitNewOrder(order.restaurantId, order);
+
     res.json({
       success: true,
       data: { order: { id: order.id, paymentStatus: order.paymentStatus } },

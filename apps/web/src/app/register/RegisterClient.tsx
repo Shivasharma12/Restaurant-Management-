@@ -183,7 +183,7 @@ export default function RegisterClient() {
 
           {/* Google OAuth */}
           <a
-            href={`${process.env.NEXT_PUBLIC_API_URL}/auth/google`}
+            href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1'}/auth/google`}
             className="w-full flex items-center justify-center gap-3 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm font-medium hover:bg-white/10 transition-colors"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">

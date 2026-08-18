@@ -448,9 +448,11 @@ export async function getMe(req: AuthenticatedRequest, res: Response, next: Next
 
 // ── Google OAuth (placeholder handlers) ──────────────────────
 
-export function googleAuth(_req: Request, res: Response): void {
+export function googleAuth(req: Request, res: Response): void {
   const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
-  const redirectUri = process.env.GOOGLE_CALLBACK_URL ?? '';
+  const host = req.get('host');
+  const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  const redirectUri = process.env.GOOGLE_CALLBACK_URL || `${protocol}://${host}/api/v1/auth/google/callback`;
 
   if (!clientId || clientId.startsWith('your-google-client-id')) {
     const frontendUrl = process.env.CLIENT_URL ?? 'http://localhost:3001';
@@ -468,12 +470,14 @@ export async function googleCallback(
   next: NextFunction
 ): Promise<void> {
   try {
-    // In production, passport-google-oauth20 handles this
-    // This is a simplified handler
     const code = req.query.code as string;
     if (!code) {
       throw new AppError('Authorization code missing', 400, 'OAUTH_ERROR');
     }
+
+    const host = req.get('host');
+    const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+    const redirectUri = process.env.GOOGLE_CALLBACK_URL || `${protocol}://${host}/api/v1/auth/google/callback`;
 
     // Exchange code for tokens with Google
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
@@ -483,7 +487,7 @@ export async function googleCallback(
         code,
         client_id: process.env.GOOGLE_CLIENT_ID ?? '',
         client_secret: process.env.GOOGLE_CLIENT_SECRET ?? '',
-        redirect_uri: process.env.GOOGLE_CALLBACK_URL ?? '',
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code',
       }),
     });
@@ -542,7 +546,7 @@ export async function googleCallback(
     setRefreshTokenCookie(res, newRefreshToken);
 
     // Redirect to frontend with token
-    const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3000';
+    const clientUrl = process.env.CLIENT_URL ?? 'http://localhost:3001';
     res.redirect(`${clientUrl}/auth/callback?token=${accessToken}`);
   } catch (error) {
     next(error);

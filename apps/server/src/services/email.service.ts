@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 });
 
 const FROM = `"${process.env.SMTP_FROM_NAME ?? 'EZ- Restaurant'}" <${
-  process.env.SMTP_FROM_EMAIL ?? 'noreply@qrrestaurant.com'
+  process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'shivabhardwaj4545@gmail.com'
 }>`;
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {

@@ -46,8 +46,8 @@ export function AdminDashboard() {
   useEffect(() => {
     if (!user?.id) return;
     const socket = io(
-      process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') ?? 'http://localhost:4000',
-      { transports: ['websocket'], withCredentials: true }
+      process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') ?? 'http://localhost:4000',
+      { transports: ['websocket', 'polling'], withCredentials: true }
     );
 
     socket.emit('join:user', user.id);

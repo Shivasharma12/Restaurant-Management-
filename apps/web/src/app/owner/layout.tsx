@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/store/auth.store';
 import { useRouter } from 'next/navigation';
-import { Loader2, DollarSign, BellRing, Banknote } from 'lucide-react';
+import { Loader2, DollarSign, BellRing, Banknote, ShoppingBag, Check, X } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { toast } from 'sonner';
@@ -78,6 +78,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const { activeWaiterAlert, addWaiterCall, removeWaiterCall, setActiveWaiterAlert } = useWaiterStore();
+  const [activeNewOrderAlert, setActiveNewOrderAlert] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -107,8 +108,8 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
     if (!restaurantData?.id) return;
 
     const socket: Socket = io(
-      process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') ?? 'http://localhost:4000',
-      { transports: ['websocket'], withCredentials: true }
+      process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') ?? 'http://localhost:4000',
+      { transports: ['websocket', 'polling'], withCredentials: true }
     );
     socketRef.current = socket;
     useWaiterStore.getState().setSocket(socket);
@@ -163,13 +164,14 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
     // 2. New order received
     socket.on('order:new', (order: any) => {
       playAlertBeep();
+      setActiveNewOrderAlert(order);
       
-      const orderIdShort = order.id.slice(-8).toUpperCase();
-      const itemsLabel = order.items?.map((i: any) => `${i.menuItem?.name || 'Item'} × ${i.quantity}`).join(', ');
+      const orderIdShort = order.id ? order.id.slice(-8).toUpperCase() : 'NEW';
+      const itemsLabel = order.items?.map((i: any) => `${i.menuItem?.name || i.name || 'Item'} × ${i.quantity}`).join(', ');
       
-      toast.success(`New Order Received! #${orderIdShort} for ₹${order.total?.toFixed(0)}`, {
+      toast.success(`🛍️ New Order Received! #${orderIdShort} for ₹${order.total ? Number(order.total).toFixed(0) : ''}`, {
         description: itemsLabel,
-        duration: 10000,
+        duration: 12000,
         icon: '🛍️',
       });
       
@@ -391,6 +393,129 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
             </motion.div>
           );
         })()}
+      </AnimatePresence>
+
+      {/* Global New Order Alert Modal */}
+      <AnimatePresence>
+        {activeNewOrderAlert && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-card border-2 border-orange-500 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden text-card-foreground"
+            >
+              {/* Header Banner */}
+              <div className="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500 p-5 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-xs">
+                    <ShoppingBag className="w-5 h-5 text-white animate-bounce" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full">
+                      New Order Notification
+                    </span>
+                    <h3 className="font-display font-extrabold text-xl leading-tight">
+                      Order #{activeNewOrderAlert.id ? activeNewOrderAlert.id.slice(-8).toUpperCase() : 'NEW'}
+                    </h3>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveNewOrderAlert(null)}
+                  className="p-1.5 rounded-full hover:bg-white/20 transition-colors"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              </div>
+
+              {/* Order Info */}
+              <div className="p-5 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div className="flex items-center justify-between bg-muted/50 p-3 rounded-2xl border border-border/50">
+                  <div>
+                    <p className="text-xs text-muted-foreground font-medium">Order Type / Location</p>
+                    <p className="text-sm font-bold text-foreground">
+                      {activeNewOrderAlert.tableNumber ? `🍽️ Table ${activeNewOrderAlert.tableNumber}` : '🏠 Home Delivery'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground font-medium">Total Amount</p>
+                    <p className="text-lg font-extrabold text-orange-600 dark:text-orange-400">
+                      ₹{Number(activeNewOrderAlert.total || 0).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Items Summary */}
+                {activeNewOrderAlert.items && activeNewOrderAlert.items.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Order Items:</p>
+                    <div className="space-y-1.5 bg-background p-3 rounded-2xl border border-border/60">
+                      {activeNewOrderAlert.items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center text-xs py-1 border-b border-border/30 last:border-0">
+                          <span className="font-semibold text-foreground">
+                            {item.menuItem?.name || item.name || 'Item'} × {item.quantity}
+                          </span>
+                          <span className="font-mono text-muted-foreground">
+                            ₹{Number(item.subtotal || (item.unitPrice * item.quantity) || 0).toFixed(0)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Method Badge */}
+                <div className="flex items-center justify-between text-xs p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40">
+                  <span className="font-semibold text-blue-700 dark:text-blue-300">Payment Method:</span>
+                  <span className="font-bold text-blue-800 dark:text-blue-200">
+                    {activeNewOrderAlert.paymentMethod === 'RAZORPAY' ? 'Pay Direct (Online)' : activeNewOrderAlert.paymentMethod === 'PAY_TO_WAITER' ? 'Pay to Waiter' : 'Pay on Counter'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="p-4 border-t border-border bg-muted/30 flex gap-2 flex-wrap">
+                <button
+                  onClick={async () => {
+                    try {
+                      await api.patch(`/owner/orders/${activeNewOrderAlert.id}/status`, { status: 'CONFIRMED' });
+                      toast.success(`Order #${activeNewOrderAlert.id.slice(-8).toUpperCase()} Confirmed!`);
+                      queryClient.invalidateQueries({ queryKey: ['owner-orders'] });
+                      queryClient.invalidateQueries({ queryKey: ['owner-dashboard'] });
+                    } catch {
+                      toast.error('Failed to confirm order.');
+                    } finally {
+                      setActiveNewOrderAlert(null);
+                    }
+                  }}
+                  className="flex-1 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" /> Confirm Order
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveNewOrderAlert(null);
+                    router.push('/owner/orders');
+                  }}
+                  className="flex-1 py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-md transition-all text-center"
+                >
+                  View All Orders
+                </button>
+                <button
+                  onClick={() => setActiveNewOrderAlert(null)}
+                  className="py-3 px-4 rounded-xl border border-border text-foreground font-semibold text-xs hover:bg-muted transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {children}

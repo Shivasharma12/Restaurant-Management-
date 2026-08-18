@@ -8,6 +8,7 @@ import { useCartStore } from '@/store/cart.store';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from 'sonner';
 import api from '@/lib/api';
+import { getImageUrl } from '@/lib/image';
 
 interface MenuItemCardProps {
   item: {
@@ -184,7 +185,7 @@ export function MenuItemCard({ item, themeColor, restaurantId, restaurantSlug, l
           <div className="relative">
             {item.image ? (
               <div className="w-28 h-24 rounded-xl overflow-hidden">
-                <Image src={item.image} alt={item.name} fill className="object-cover" />
+                <Image src={getImageUrl(item.image)} alt={item.name} fill className="object-cover" />
               </div>
             ) : (
               <div className="w-28 h-24 rounded-xl bg-muted flex items-center justify-center text-3xl">

@@ -412,7 +412,7 @@ export function OwnerOrdersPage() {
                                  order.paymentMethod === 'WALLET' ? <Wallet className="w-3 h-3" /> :
                                  order.paymentMethod === 'PAY_TO_WAITER' ? <User className="w-3 h-3" /> :
                                  <Banknote className="w-3 h-3" />}
-                                {order.paymentMethod === 'RAZORPAY' ? 'Razorpay' : order.paymentMethod === 'WALLET' ? 'Wallet' : order.paymentMethod === 'PAY_TO_WAITER' ? 'Pay to Waiter' : 'Pay on Counter'}
+                                {order.paymentMethod === 'RAZORPAY' ? 'Pay Direct (Online)' : order.paymentMethod === 'WALLET' ? 'Wallet' : order.paymentMethod === 'PAY_TO_WAITER' ? 'Pay to Waiter' : 'Pay on Counter'}
                               </span>
                               
                               {/* Payment Status Badge */}
@@ -431,7 +431,7 @@ export function OwnerOrdersPage() {
                               {order.paymentStatus === 'PAID' ? (
                                 <p className="text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1">
                                   {order.paymentMethod === 'RAZORPAY' ? (
-                                    <>✅ Paid Online via Razorpay</>
+                                    <>✅ Paid Direct to Owner (Online)</>
                                   ) : order.paymentMethod === 'PAY_TO_WAITER' ? (
                                     <>💵 Paid to Waiter</>
                                   ) : (
@@ -471,20 +471,43 @@ export function OwnerOrdersPage() {
 
                             {/* Add-on Order Journey Banner & Actions */}
                             {(order as any).addOnStatus && (
-                              <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 rounded-xl p-3 space-y-2 my-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-1.5 font-bold text-xs text-blue-700 dark:text-blue-300">
-                                    <Sparkles className="w-4 h-4 animate-spin text-blue-500" />
+                              <div className={`rounded-xl p-3.5 space-y-2.5 my-2 border ${
+                                (order as any).addOnStatus === 'CANCELLED'
+                                  ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-900/50'
+                                  : 'bg-blue-50/70 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/50'
+                              }`}>
+                                <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                                  <div className={`flex items-center gap-1.5 font-bold text-xs ${
+                                    (order as any).addOnStatus === 'CANCELLED' ? 'text-red-700 dark:text-red-300' : 'text-blue-700 dark:text-blue-300'
+                                  }`}>
+                                    <Sparkles className="w-4 h-4 text-primary" />
                                     <span>⚡ Add-on Items Status: {(order as any).addOnStatus}</span>
                                   </div>
                                   {(order as any).lastAddOnAt && (
-                                    <span className="text-[10px] text-blue-600 dark:text-blue-400">
+                                    <span className="text-[10px] text-muted-foreground font-mono">
                                       Added {new Date((order as any).lastAddOnAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
                                   )}
                                 </div>
-                                 {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (order as any).addOnStatus !== 'DELIVERED' && (
-                                   <div className="flex gap-2 flex-wrap">
+
+                                {/* Customer Selected Payment Method for Add-ons */}
+                                <div className="flex items-center justify-between text-xs bg-background/60 p-2 rounded-lg border border-border/40">
+                                  <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                                    <CreditCard className="w-3.5 h-3.5 text-primary" />
+                                    <span>Payment Method:</span>
+                                    <span className="text-primary font-bold">
+                                      {order.paymentMethod === 'RAZORPAY' ? 'Pay Direct (Online)' : order.paymentMethod === 'PAY_TO_WAITER' ? 'Pay to Waiter' : 'Pay on Counter'}
+                                    </span>
+                                  </div>
+                                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
+                                    order.paymentStatus === 'PAID' ? 'bg-green-500/15 text-green-600 dark:text-green-400' : order.paymentStatus === 'FAILED' ? 'bg-red-500/15 text-red-600 dark:text-red-400' : 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400'
+                                  }`}>
+                                    {order.paymentStatus === 'PAID' ? 'PAID' : 'PAYMENT PENDING'}
+                                  </span>
+                                </div>
+
+                                 {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && (order as any).addOnStatus !== 'DELIVERED' && (order as any).addOnStatus !== 'CANCELLED' && (
+                                   <div className="flex gap-2 flex-wrap pt-1">
                                      {(order as any).addOnStatus !== 'PREPARING' && (order as any).addOnStatus !== 'READY' && (order as any).addOnStatus !== 'DELIVERED' && (
                                        <button
                                          onClick={() => updateStatusMutation.mutate({ id: order.id, addOnStatus: 'PREPARING' })}
@@ -512,6 +535,13 @@ export function OwnerOrdersPage() {
                                          ✅ Mark Add-ons Served
                                        </button>
                                      )}
+                                     <button
+                                       onClick={() => updateStatusMutation.mutate({ id: order.id, addOnStatus: 'CANCELLED' })}
+                                       disabled={updateStatusMutation.isPending}
+                                       className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-red-600 hover:bg-red-700 text-white transition-all shadow-sm flex items-center gap-1"
+                                     >
+                                       🚫 Cancel Add-ons
+                                     </button>
                                    </div>
                                  )}
                               </div>
