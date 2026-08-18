@@ -497,63 +497,70 @@ export function OwnerSettingsPage() {
                       <Clock className="w-4 h-4 text-primary" />
                       Operating Hours (Weekly Schedule)
                     </label>
-                    <div className="space-y-3 bg-muted/10 border border-border rounded-2xl p-4">
+                    <div className="space-y-2.5 bg-muted/10 border border-border rounded-2xl p-3 sm:p-4 min-w-0 max-w-full overflow-x-hidden">
                       {DAYS_OF_WEEK.map((day) => {
                         const dayHours = operatingHours[day as keyof OperatingHours];
+                        const isOpen = !dayHours?.closed;
                         return (
-                          <div key={day} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-2 border-b border-border/50 last:border-b-0">
-                            <span className="capitalize font-medium text-xs w-24">{day}</span>
-                            
-                            <div className="flex items-center gap-4 flex-1 justify-end">
+                          <div
+                            key={day}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-card/60 border border-border/50 hover:bg-card/90 transition-all min-w-0"
+                          >
+                            <div className="flex items-center justify-between sm:justify-start gap-3 sm:w-36 shrink-0">
+                              <span className="capitalize font-semibold text-xs text-foreground">{day}</span>
+                              
                               {/* Toggle switch for Open/Closed */}
-                              <label className="relative inline-flex items-center cursor-pointer">
+                              <label className="relative inline-flex items-center cursor-pointer shrink-0">
                                 <input
                                   type="checkbox"
-                                  checked={!dayHours?.closed}
+                                  checked={isOpen}
                                   onChange={(e) => {
-                                    const isOpen = e.target.checked;
+                                    const checked = e.target.checked;
                                     setOperatingHours(prev => ({
                                       ...prev,
-                                      [day]: { ...prev[day as keyof OperatingHours], closed: !isOpen }
+                                      [day]: { ...prev[day as keyof OperatingHours], closed: !checked }
                                     }));
                                   }}
                                   className="sr-only peer"
                                 />
-                                <div className="w-9 h-5 bg-muted rounded-full peer peer-focus:ring-2 peer-focus:ring-primary/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
-                                <span className="ml-2.5 text-xs font-semibold select-none min-w-[48px]">
-                                  {!dayHours?.closed ? 'Open' : 'Closed'}
+                                <div className="w-8 h-4.5 bg-muted rounded-full peer peer-focus:ring-2 peer-focus:ring-primary/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-primary"></div>
+                                <span className={`ml-2 text-xs font-semibold select-none min-w-[42px] ${isOpen ? 'text-primary' : 'text-muted-foreground'}`}>
+                                  {isOpen ? 'Open' : 'Closed'}
                                 </span>
                               </label>
-
-                              {/* Open and Close Time Pickers */}
-                              {!dayHours?.closed && (
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="time"
-                                    value={dayHours?.open ?? '11:00'}
-                                    onChange={(e) => {
-                                      setOperatingHours(prev => ({
-                                        ...prev,
-                                        [day]: { ...prev[day as keyof OperatingHours], open: e.target.value }
-                                      }));
-                                    }}
-                                    className="px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-                                  />
-                                  <span className="text-xs text-muted-foreground">to</span>
-                                  <input
-                                    type="time"
-                                    value={dayHours?.close ?? '23:00'}
-                                    onChange={(e) => {
-                                      setOperatingHours(prev => ({
-                                        ...prev,
-                                        [day]: { ...prev[day as keyof OperatingHours], close: e.target.value }
-                                      }));
-                                    }}
-                                    className="px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary"
-                                  />
-                                </div>
-                              )}
                             </div>
+
+                            {/* Open and Close Time Pickers */}
+                            {isOpen ? (
+                              <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-start sm:justify-end shrink-0">
+                                <span className="text-[11px] text-muted-foreground sm:hidden font-medium">Hours:</span>
+                                <input
+                                  type="time"
+                                  value={dayHours?.open ?? '11:00'}
+                                  onChange={(e) => {
+                                    setOperatingHours(prev => ({
+                                      ...prev,
+                                      [day]: { ...prev[day as keyof OperatingHours], open: e.target.value }
+                                    }));
+                                  }}
+                                  className="px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+                                />
+                                <span className="text-xs text-muted-foreground font-medium">to</span>
+                                <input
+                                  type="time"
+                                  value={dayHours?.close ?? '23:00'}
+                                  onChange={(e) => {
+                                    setOperatingHours(prev => ({
+                                      ...prev,
+                                      [day]: { ...prev[day as keyof OperatingHours], close: e.target.value }
+                                    }));
+                                  }}
+                                  className="px-2 py-1 bg-background border border-border rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-xs italic text-muted-foreground hidden sm:inline-block">Closed all day</span>
+                            )}
                           </div>
                         );
                       })}
