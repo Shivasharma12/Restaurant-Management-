@@ -64,8 +64,9 @@ export function SuperAdminBroadcastModal({ isOpen, onClose }: SuperAdminBroadcas
       setEmailSubject('');
       setEmailContent('');
       onClose();
-    } catch {
-      toast.error('Failed to send broadcast email. Please check SMTP settings.');
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to send broadcast email. Please check SMTP settings.';
+      toast.error(errMsg);
     } finally {
       setSendingEmail(false);
     }

@@ -298,6 +298,7 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
       ownerName,
       ownerEmail,
       ownerPhone,
+      ownerPassword,
     } = req.body as {
       name: string;
       slug?: string;
@@ -309,6 +310,7 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
       ownerName: string;
       ownerEmail: string;
       ownerPhone?: string;
+      ownerPassword?: string;
     };
 
     if (!name || !ownerName || !ownerEmail) {
@@ -322,10 +324,10 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
       where: { email: normalizedOwnerEmail, deletedAt: null },
     });
 
-    let tempPassword: string | undefined = undefined;
+    let finalPassword: string | undefined = undefined;
     if (!owner) {
-      tempPassword = 'Owner@123456';
-      const passwordHash = await bcrypt.hash(tempPassword, 12);
+      finalPassword = ownerPassword?.trim() || 'Owner@123456';
+      const passwordHash = await bcrypt.hash(finalPassword, 12);
       owner = await prisma.user.create({
         data: {
           name: ownerName,
@@ -336,6 +338,16 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
           isVerified: true,
         },
       });
+    } else if (ownerPassword?.trim()) {
+      finalPassword = ownerPassword.trim();
+      const passwordHash = await bcrypt.hash(finalPassword, 12);
+      owner = await prisma.user.update({
+        where: { id: owner.id },
+        data: {
+          passwordHash,
+          role: owner.role === 'SUPER_ADMIN' ? 'SUPER_ADMIN' : 'RESTAURANT_OWNER',
+        },
+      });
     }
 
     // 2. Generate slug — use provided custom slug or generate a unique code
@@ -343,7 +355,6 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
     if (customSlug?.trim()) {
       slug = customSlug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     } else {
-      // Generate a unique short code slug (e.g. rest-k7m2xq)
       let attempts = 0;
       slug = '';
       do {
@@ -379,13 +390,20 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
       },
     });
 
-    // 4. Send email notification & verification to restaurant owner
+    // 4. Send email notification to owner containing restaurant details, ID, login email & password
     sendRestaurantWelcomeEmail(
       normalizedOwnerEmail,
       ownerName,
-      name,
-      slug,
-      tempPassword
+      {
+        id: restaurant.id,
+        name: restaurant.name,
+        slug: restaurant.slug,
+        cuisineType: restaurant.cuisineType,
+        city: restaurant.city,
+        address: restaurant.address,
+        phone: restaurant.phone,
+      },
+      finalPassword
     ).catch((err) => {
       logger.error(`Failed to send restaurant welcome email to ${normalizedOwnerEmail}:`, err);
     });
@@ -490,16 +508,18 @@ export async function broadcastNotification(req: AuthenticatedRequest, res: Resp
         },
       });
 
-      // 2. Insert broadcast directly into 1-to-1 Owner Chat Thread!
-      await prisma.directMessage.create({
-        data: {
-          senderId: adminUserId,
-          receiverId: u.id,
-          message: `📢 [BROADCAST ANNOUNCEMENT]\nTitle: ${title}\n\n${message}`,
-        },
-      });
+      // 2. Insert broadcast directly into 1-to-1 Owner Chat Thread (skip self)
+      if (u.id !== adminUserId) {
+        await prisma.directMessage.create({
+          data: {
+            senderId: adminUserId,
+            receiverId: u.id,
+            message: `📢 [BROADCAST ANNOUNCEMENT]\nTitle: ${title}\n\n${message}`,
+          },
+        });
+      }
 
-      // 3. Real-time Sockets — only send as notification (NOT as waiter call popup)
+      // 3. Real-time Sockets
       emitNotification(u.id, {
         type: 'BROADCAST',
         title: `📢 ${title}`,
@@ -538,14 +558,15 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
     });
 
     for (const u of users) {
-      // Insert email broadcast directly into 1-to-1 Chat Thread as well!
-      await prisma.directMessage.create({
-        data: {
-          senderId: adminUserId,
-          receiverId: u.id,
-          message: `📧 [MASS EMAIL ANNOUNCEMENT]\nSubject: ${subject}\n\n${message}`,
-        },
-      });
+      if (u.id !== adminUserId) {
+        await prisma.directMessage.create({
+          data: {
+            senderId: adminUserId,
+            receiverId: u.id,
+            message: `📧 [MASS EMAIL ANNOUNCEMENT]\nSubject: ${subject}\n\n${message}`,
+          },
+        });
+      }
 
       emitNotification(u.id, {
         type: 'BROADCAST',
@@ -555,11 +576,26 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
       });
     }
 
-    const recipientEmails = users.map((u) => u.email).filter(Boolean);
-    if (req.user?.email && !recipientEmails.includes(req.user.email)) {
-      recipientEmails.push(req.user.email);
+    const recipientEmails = Array.from(
+      new Set(
+        users
+          .map((u) => {
+            if (!u.email) return '';
+            const email = u.email.includes(':') ? u.email.split(':')[1] : u.email;
+            return email.toLowerCase().trim();
+          })
+          .filter((email) => email && email.includes('@') && email.includes('.'))
+      )
+    );
+
+    if (req.user?.email) {
+      const reqEmail = req.user.email.includes(':') ? req.user.email.split(':')[1] : req.user.email;
+      const normalizedReqEmail = reqEmail.toLowerCase().trim();
+      if (!recipientEmails.includes(normalizedReqEmail)) {
+        recipientEmails.push(normalizedReqEmail);
+      }
     }
-    const adminSmtpEmail = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL;
+    const adminSmtpEmail = (process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || '').toLowerCase().trim();
     if (adminSmtpEmail && !recipientEmails.includes(adminSmtpEmail)) {
       recipientEmails.push(adminSmtpEmail);
     }

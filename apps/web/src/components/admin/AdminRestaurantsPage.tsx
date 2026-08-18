@@ -64,6 +64,7 @@ export function AdminRestaurantsPage() {
   const [createOwnerName, setCreateOwnerName] = useState('');
   const [createOwnerEmail, setCreateOwnerEmail] = useState('');
   const [createOwnerPhone, setCreateOwnerPhone] = useState('');
+  const [createOwnerPassword, setCreateOwnerPassword] = useState('');
   const [creating, setCreating] = useState(false);
 
   const handleCreateRestaurant = async (e: React.FormEvent) => {
@@ -84,8 +85,9 @@ export function AdminRestaurantsPage() {
         ownerName: createOwnerName,
         ownerEmail: createOwnerEmail,
         ownerPhone: createOwnerPhone || undefined,
+        ownerPassword: createOwnerPassword || undefined,
       });
-      toast.success('Restaurant created successfully! 🎉');
+      toast.success('Restaurant created! Email sent to owner with details & credentials. 🎉');
       setShowCreateModal(false);
       // Reset form
       setCreateName('');
@@ -97,6 +99,7 @@ export function AdminRestaurantsPage() {
       setCreateOwnerName('');
       setCreateOwnerEmail('');
       setCreateOwnerPhone('');
+      setCreateOwnerPassword('');
       qc.invalidateQueries({ queryKey: ['admin-restaurants'] });
     } catch (err: any) {
       const errMsg = err.response?.data?.error || err.response?.data?.message || 'Failed to create restaurant';
@@ -508,18 +511,30 @@ export function AdminRestaurantsPage() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Owner Phone Number (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 9876543211"
-                    value={createOwnerPhone}
-                    onChange={(e) => setCreateOwnerPhone(e.target.value)}
-                    className="w-full px-3 py-2 bg-muted rounded-xl text-xs border border-border focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
-                  />
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    ℹ️ If a user with this email does not exist, a new Owner account will be created with default password: <code className="bg-muted px-1.5 py-0.5 rounded text-red-500 font-mono">Owner@123456</code>.
-                  </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Owner Phone Number (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 9876543211"
+                      value={createOwnerPhone}
+                      onChange={(e) => setCreateOwnerPhone(e.target.value)}
+                      className="w-full px-3 py-2 bg-muted rounded-xl text-xs border border-border focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-muted-foreground mb-1 block">Owner Account Password (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Owner@123456"
+                      value={createOwnerPassword}
+                      onChange={(e) => setCreateOwnerPassword(e.target.value)}
+                      className="w-full px-3 py-2 bg-muted rounded-xl text-xs border border-border focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                    />
+                  </div>
+                </div>
+                <div className="p-2.5 bg-primary/5 border border-primary/20 rounded-xl text-[11px] text-muted-foreground">
+                  📧 <strong>Email Notification:</strong> An official welcome email containing the <strong>Restaurant Details</strong> (ID, Name, Slug, Storefront URL) and <strong>Owner Login Credentials</strong> (Login Email & Password) will be sent automatically to the owner's email address upon creation.
                 </div>
               </div>
 

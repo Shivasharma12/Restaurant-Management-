@@ -132,7 +132,19 @@ export async function register(req: Request, res: Response, next: NextFunction):
       });
 
       const userEmail = user.email.includes(':') ? user.email.split(':')[1] : user.email;
-      sendRestaurantWelcomeEmail(userEmail, name, restaurant.name, slug).catch((err) => {
+      sendRestaurantWelcomeEmail(
+        userEmail,
+        name,
+        {
+          id: restaurant.id,
+          name: restaurant.name,
+          slug: restaurant.slug,
+          cuisineType: restaurant.cuisineType,
+          city: restaurant.city,
+          address: restaurant.address,
+          phone: restaurant.phone,
+        }
+      ).catch((err) => {
         logger.error(`Failed to send restaurant welcome email on registration to ${userEmail}:`, err);
       });
     }
