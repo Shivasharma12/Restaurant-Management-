@@ -9,6 +9,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  tls: {
+    rejectUnauthorized: false,
+  },
 });
 
 const FROM = `"${process.env.SMTP_FROM_NAME ?? 'EZ- Restaurant'}" <${
@@ -17,11 +20,11 @@ const FROM = `"${process.env.SMTP_FROM_NAME ?? 'EZ- Restaurant'}" <${
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   try {
-    await transporter.sendMail({ from: FROM, to, subject, html });
-    logger.info(`Email sent to ${to}: ${subject}`);
-  } catch (error) {
-    logger.error(`Failed to send email to ${to}:`, error);
-    throw new Error('Failed to send email. Please try again.');
+    const info = await transporter.sendMail({ from: FROM, to, subject, html });
+    logger.info(`✅ Email sent to ${to}: ${subject} (Message ID: ${info.messageId})`);
+  } catch (error: any) {
+    logger.error(`❌ Failed to send email to ${to}:`, error.message || error);
+    throw new Error(`Email delivery failed: ${error.message || 'SMTP error'}`);
   }
 }
 
@@ -145,18 +148,37 @@ export async function sendBroadcastEmail(
   messageHtml: string,
   senderTitle: string = 'Super Admin Broadcast'
 ): Promise<{ success: number; failed: number }> {
-  let successCount = 0;
-  let failedCount = 0;
+  // 1. Clean, normalize, and extract real email addresses (remove prefixes like "upstates:")
+  const cleanedRecipients = Array.from(
+    new Set(
+      recipients
+        .map((r) => {
+          if (!r) return '';
+          const cleaned = r.includes(':') ? r.split(':')[1] : r;
+          return cleaned.toLowerCase().trim();
+        })
+        .filter((r) => r && r.includes('@') && r.includes('.'))
+    )
+  );
 
-  for (const recipient of recipients) {
-    try {
+  // 2. Ensure SMTP admin email (shivabhardwaj4545@gmail.com) is included so admin gets a copy
+  const adminSmtpEmail = (process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || '').toLowerCase().trim();
+  if (adminSmtpEmail && !cleanedRecipients.includes(adminSmtpEmail)) {
+    cleanedRecipients.push(adminSmtpEmail);
+  }
+
+  logger.info(`📧 Starting parallel broadcast email dispatch for ${cleanedRecipients.length} recipients: ${cleanedRecipients.join(', ')}`);
+
+  // 3. Dispatch emails in parallel using Promise.allSettled
+  const results = await Promise.allSettled(
+    cleanedRecipients.map(async (recipient) => {
       const html = `
         <!DOCTYPE html>
         <html>
         <head><meta charset="UTF-8"><style>
           body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
           .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 20px rgba(0,0,0,0.1); }
-          .header { background: linear-gradient(135deg, #4f46e5, #6366f1); padding: 30px; text-align: center; }
+          .header { background: linear-gradient(135deg, #E85D04, #F48C06); padding: 30px; text-align: center; }
           .header h1 { color: white; margin: 0; font-size: 24px; }
           .body { padding: 30px; font-size: 15px; color: #333; line-height: 1.6; }
           .footer { background: #f9f9f9; padding: 20px; text-align: center; color: #888; font-size: 12px; }
@@ -167,18 +189,27 @@ export async function sendBroadcastEmail(
             <div class="body">
               ${messageHtml.replace(/\n/g, '<br />')}
             </div>
-            <div class="footer"><p>© Digital Restaurant SaaS Platform. Official Broadcast.</p></div>
+            <div class="footer"><p>© EZ- Restaurant Platform. Official Announcement.</p></div>
           </div>
         </body>
         </html>
       `;
       await sendEmail(recipient, subject, html);
-      successCount++;
-    } catch (err) {
-      failedCount++;
-      logger.error(`Broadcast email failed for ${recipient}:`, err);
-    }
-  }
+    })
+  );
 
+  let successCount = 0;
+  let failedCount = 0;
+
+  results.forEach((res, idx) => {
+    if (res.status === 'fulfilled') {
+      successCount++;
+    } else {
+      failedCount++;
+      logger.error(`Broadcast email delivery failed for ${cleanedRecipients[idx]}:`, res.reason);
+    }
+  });
+
+  logger.info(`🎉 Broadcast email summary: ${successCount} delivered successfully, ${failedCount} failed.`);
   return { success: successCount, failed: failedCount };
 }

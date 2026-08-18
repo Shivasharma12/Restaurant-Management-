@@ -420,7 +420,7 @@ export function OwnerMenuPage() {
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl font-semibold text-sm shadow-md transition-all disabled:opacity-60"
                       >
                         <Sparkles className="w-4 h-4 animate-pulse" />
-                        {seedDemoMutation.isPending ? 'Loading Sample Menu...' : '🌱 Load Sample Demo Menu'}
+                        {seedDemoMutation.isPending ? 'Loading Sample Menu...' : '🌱 Load Sample Menu'}
                       </button>
                       <button
                         onClick={() => { setEditItem(null); setForm({ name: '', description: '', price: '', categoryId: activeCategory ?? '', isVeg: true, isAvailable: true, image: null }); setShowAddItem(true); }}

@@ -102,8 +102,8 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href={`/r/${demoSlug}`} className="btn-premium flex items-center gap-2 justify-center text-base">
-                Try Live Demo
+              <Link href="/register" className="btn-premium flex items-center gap-2 justify-center text-base">
+                Get Started Free
                 <ArrowRight className="w-4 h-4" />
               </Link>
               {mounted && user ? (
@@ -294,13 +294,9 @@ export default function HomePage() {
             <p className="text-muted-foreground mb-8">
               Join 500+ restaurants already using EZ- Restaurant to deliver better dining experiences.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register" className="btn-premium text-center">
+            <div className="flex justify-center">
+              <Link href="/register" className="btn-premium text-center px-8 py-3.5 text-base">
                 Get Started Free
-              </Link>
-              <Link href={`/r/${demoSlug}`} className="flex items-center justify-center gap-2 bg-muted hover:bg-accent border border-border px-6 py-3 rounded-xl font-semibold transition-all text-foreground">
-                <QrCode className="w-4 h-4" />
-                Try Demo Menu
               </Link>
             </div>
           </div>
