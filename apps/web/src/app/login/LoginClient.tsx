@@ -12,7 +12,6 @@ import api, { API_BASE_URL } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from 'sonner';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { GoogleSignInModal } from '@/components/GoogleSignInModal';
 
 const loginSchema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -29,7 +28,6 @@ export default function LoginClient() {
   const { setUser, user, isAuthenticated } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [googleModalOpen, setGoogleModalOpen] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -46,11 +44,7 @@ export default function LoginClient() {
   }, [isAuthenticated, user, router, restaurantSlug]);
 
   const handleGoogleAuth = () => {
-    if (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID.startsWith('your-')) {
-      window.location.href = `${API_BASE_URL}/auth/google`;
-    } else {
-      setGoogleModalOpen(true);
-    }
+    window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
@@ -299,12 +293,6 @@ export default function LoginClient() {
           </div>
         )}
       </motion.div>
-
-      <GoogleSignInModal
-        isOpen={googleModalOpen}
-        onClose={() => setGoogleModalOpen(false)}
-        restaurantSlug={restaurantSlug}
-      />
     </div>
   );
 }

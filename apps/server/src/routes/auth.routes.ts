@@ -10,7 +10,6 @@ import {
   googleAuth,
   googleCallback,
   googleOneTap,
-  googleDirectAuth,
   getMe,
 } from '../controllers/auth.controller';
 import { validate } from '../middlewares/validate.middleware';
@@ -114,6 +113,5 @@ router.get('/me', authenticate, getMe);
 router.get('/google', googleAuth);
 router.get('/google/callback', googleCallback);
 router.post('/google/onetap', googleOneTap);
-router.post('/google/direct', googleDirectAuth);
 
 export default router;

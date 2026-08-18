@@ -473,130 +473,16 @@ export async function getMe(req: AuthenticatedRequest, res: Response, next: Next
 
 // ── Google OAuth (placeholder handlers) ──────────────────────
 
-export async function googleAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  try {
-    const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
-    const host = req.get('host');
-    const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
-    const redirectUri = process.env.GOOGLE_CALLBACK_URL || `${protocol}://${host}/api/v1/auth/google/callback`;
+export function googleAuth(req: Request, res: Response): void {
+  const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
+  const host = req.get('host');
+  const protocol = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
+  const redirectUri = process.env.GOOGLE_CALLBACK_URL || `${protocol}://${host}/api/v1/auth/google/callback`;
 
-    const referer = req.get('referer');
-    const origin = req.get('origin');
-    const clientUrl = process.env.CLIENT_URL || (referer ? new URL(referer).origin : null) || (origin ? new URL(origin).origin : null) || `${protocol}://${host}`;
+  const scope = 'openid email profile';
+  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&prompt=select_account`;
 
-    // If real Google Client ID is configured, redirect to Google OAuth consent page
-    if (clientId && !clientId.startsWith('your-google-client-id')) {
-      const scope = 'openid email profile';
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`;
-      res.redirect(authUrl);
-      return;
-    }
-
-    // Fallback: Instant Google Authentication for demo / unconfigured GCP credentials
-    let googleUser = await prisma.user.findFirst({
-      where: { email: 'google.user@example.com', deletedAt: null },
-    });
-
-    if (!googleUser) {
-      googleUser = await prisma.user.create({
-        data: {
-          name: 'Alex Morgan (Google)',
-          email: 'google.user@example.com',
-          googleId: 'google-oauth-1092837465',
-          isVerified: true,
-          role: 'CUSTOMER',
-        },
-      });
-    }
-
-    const accessToken = generateAccessToken({
-      id: googleUser.id,
-      email: googleUser.email,
-      role: googleUser.role,
-      name: googleUser.name,
-    });
-    const newRefreshToken = generateRefreshToken(googleUser.id);
-    setRefreshTokenCookie(res, newRefreshToken);
-
-    res.redirect(`${clientUrl.replace(/\/$/, '')}/auth/callback?token=${accessToken}`);
-  } catch (error) {
-    next(error);
-  }
-}
-
-export async function googleDirectAuth(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> {
-  try {
-    const { email, name } = req.body as { email: string; name?: string };
-
-    if (!email || !email.includes('@')) {
-      throw new AppError('Please enter a valid Gmail or Google email address.', 400, 'BAD_REQUEST');
-    }
-
-    const normalizedEmail = email.toLowerCase().trim();
-    
-    // Auto generate clean display name if not provided
-    const nameFromEmail = normalizedEmail
-      .split('@')[0]
-      .replace(/[._]/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-    const displayName = name && name.trim().length > 0 ? name.trim() : nameFromEmail;
-
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: normalizedEmail },
-          { googleId: `google-user-${normalizedEmail}` },
-        ],
-        deletedAt: null,
-      },
-    });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          name: displayName,
-          email: normalizedEmail,
-          googleId: `google-user-${normalizedEmail}`,
-          isVerified: true,
-          role: 'CUSTOMER',
-        },
-      });
-    } else if (!user.googleId) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { googleId: `google-user-${normalizedEmail}`, isVerified: true },
-      });
-    }
-
-    const accessToken = generateAccessToken({
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    });
-    const newRefreshToken = generateRefreshToken(user.id);
-    setRefreshTokenCookie(res, newRefreshToken);
-
-    const cleanUser = {
-      ...user,
-      email: user.email.includes(':') ? user.email.split(':')[1] : user.email,
-    };
-
-    res.json({
-      success: true,
-      data: {
-        accessToken,
-        user: cleanUser,
-      },
-      message: `Signed in as ${user.email} via Google!`,
-    });
-  } catch (error) {
-    next(error);
-  }
+  res.redirect(authUrl);
 }
 
 export async function googleCallback(
