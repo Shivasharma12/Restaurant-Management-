@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../utils/AppError';
 import { uploadMenuItemImage, uploadRestaurantLogo, uploadRestaurantBanner, uploadRestaurantPaymentQr } from '../services/cloudinary.service';
-import { emitOrderStatusUpdate, emitNotification, emitUserLoyaltyUpdate } from '../services/socket.service';
+import { emitOrderStatusUpdate, emitNotification, emitUserLoyaltyUpdate, emitPaymentNotReceived } from '../services/socket.service';
 import { cacheDelPattern, cacheSet } from '../services/redis.service';
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { generateTableSignature } from '../utils/tableSignature';
@@ -743,8 +743,47 @@ export async function confirmPayment(req: AuthenticatedRequest, res: Response, n
   } catch (error) { next(error); }
 }
 
+export async function rejectPayment(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const restaurant = await getOwnerRestaurant(req.user!.id);
+    const id = req.params.id as string;
 
-// ── Analytics ──────────────────────────────────────────────────
+    const order = await prisma.order.findFirst({
+      where: { id, restaurantId: restaurant.id, deletedAt: null },
+    });
+
+    if (!order) throw new AppError('Order not found.', 404, 'ORDER_NOT_FOUND');
+    if (order.paymentStatus === 'PAID') {
+      throw new AppError('Payment is already marked as paid.', 400, 'ALREADY_PAID');
+    }
+
+    // Emit real-time socket event to the customer on this order's tracking page
+    emitPaymentNotReceived(id, Number(order.total));
+
+    // Also send an in-app notification if there's a userId
+    if (order.userId) {
+      await prisma.notification.create({
+        data: {
+          userId: order.userId,
+          restaurantId: restaurant.id,
+          type: 'SYSTEM',
+          title: '⚠️ Payment Not Received',
+          message: `Your payment of ₹${Number(order.total).toFixed(2)} for order #${id.slice(-8).toUpperCase()} was not received. Please complete payment to process your order, or it may be cancelled.`,
+        },
+      });
+      emitNotification(order.userId, {
+        type: 'SYSTEM',
+        title: '⚠️ Payment Not Received',
+        message: `Your payment of ₹${Number(order.total).toFixed(2)} for order #${id.slice(-8).toUpperCase()} was not received.`,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    res.json({ success: true, message: 'Payment rejection notification sent to customer.' });
+  } catch (error) { next(error); }
+}
+
+
 
 export async function getAnalytics(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {

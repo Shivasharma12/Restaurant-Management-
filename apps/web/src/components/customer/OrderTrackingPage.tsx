@@ -16,6 +16,7 @@ import {
   CreditCard,
   Copy,
   Sparkles,
+  AlertTriangle,
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import api from '@/lib/api';
@@ -23,6 +24,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { InvoiceDownload } from './InvoiceDownload';
+import { AnimatePresence, motion } from 'framer-motion';
 
 // ─── Tracking Step Definitions ────────────────────────────────────────────────
 
@@ -125,6 +127,8 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [showPaymentNotReceivedModal, setShowPaymentNotReceivedModal] = useState(false);
+  const [paymentNotReceivedAmount, setPaymentNotReceivedAmount] = useState<number>(0);
 
   const qc = useQueryClient();
   const submitReviewMutation = useMutation({
@@ -181,6 +185,16 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
       }
     });
 
+    // Listen for payment not received notification from owner
+    socket.on('payment:not_received', (data: { orderId: string; amount: number }) => {
+      if (data.orderId === orderId) {
+        setPaymentNotReceivedAmount(data.amount);
+        setShowPaymentNotReceivedModal(true);
+        // Also play a system beep via toast
+        toast.error('⚠️ Payment not received by restaurant!', { duration: 5000 });
+      }
+    });
+
     return () => {
       socket.disconnect();
     };
@@ -215,6 +229,47 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background pb-10">
+      {/* Payment Not Received Alert Modal */}
+      <AnimatePresence>
+        {showPaymentNotReceivedModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 20 }}
+              className="bg-card border-2 border-red-500 rounded-3xl p-6 max-w-md w-full shadow-2xl text-center space-y-4 relative overflow-hidden"
+            >
+              <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-950/50 border border-red-200 dark:border-red-900/50 flex items-center justify-center mx-auto text-red-600 dark:text-red-400">
+                <AlertTriangle className="w-8 h-8 animate-bounce" />
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold text-foreground font-display">⚠️ Payment Not Received</h3>
+                <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                  Kindly do the payment of <strong className="text-foreground font-semibold">₹{(paymentNotReceivedAmount || order.total).toFixed(2)}</strong> for processing of your order or it will be cancelled.
+                </p>
+              </div>
+
+              <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/30 rounded-2xl p-3 text-xs text-red-700 dark:text-red-400 font-medium">
+                Please verify your transaction or pay using the restaurant payment details shown on this page.
+              </div>
+
+              <button
+                onClick={() => setShowPaymentNotReceivedModal(false)}
+                className="w-full py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-sm shadow-md transition-all"
+              >
+                I Understand, Pay Now
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Restaurant Header */}
       <div
         className="px-4 py-6"

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -35,6 +35,15 @@ export default function RegisterClient() {
   const restaurantSlug = searchParams.get('restaurant');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error === 'GOOGLE_CLIENT_ID_NOT_CONFIGURED') {
+      toast.error('Google Sign-In is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the server .env file.', {
+        duration: 8000
+      });
+    }
+  }, [searchParams]);
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),

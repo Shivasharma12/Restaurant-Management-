@@ -165,7 +165,7 @@ export async function sendBroadcastEmail(
           <div class="container">
             <div class="header"><h1>📢 ${senderTitle}</h1></div>
             <div class="body">
-              ${messageHtml}
+              ${messageHtml.replace(/\n/g, '<br />')}
             </div>
             <div class="footer"><p>© Digital Restaurant SaaS Platform. Official Broadcast.</p></div>
           </div>

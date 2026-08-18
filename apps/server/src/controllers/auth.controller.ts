@@ -449,9 +449,14 @@ export async function getMe(req: AuthenticatedRequest, res: Response, next: Next
 // ── Google OAuth (placeholder handlers) ──────────────────────
 
 export function googleAuth(_req: Request, res: Response): void {
-  // Redirect to Google OAuth — in production use passport-google-oauth20
   const clientId = process.env.GOOGLE_CLIENT_ID ?? '';
   const redirectUri = process.env.GOOGLE_CALLBACK_URL ?? '';
+
+  if (!clientId || clientId.startsWith('your-google-client-id')) {
+    const frontendUrl = process.env.CLIENT_URL ?? 'http://localhost:3001';
+    return res.redirect(`${frontendUrl}/login?error=GOOGLE_CLIENT_ID_NOT_CONFIGURED`);
+  }
+
   const scope = 'openid email profile';
   const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}`;
   res.redirect(authUrl);

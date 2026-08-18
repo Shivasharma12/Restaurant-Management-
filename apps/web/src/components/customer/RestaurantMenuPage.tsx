@@ -360,7 +360,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
 
     socket.on('waiter:responded', (resData: { tableNumber?: string; message?: string }) => {
       const currentTable = tableNumber || manualTableNumber;
-      if (!currentTable || String(currentTable) === String(resData.tableNumber)) {
+      if (currentTable && String(currentTable) === String(resData.tableNumber)) {
         toast.success(`👨‍🍳 Waiter is coming in a few minutes!`, {
           duration: 10000,
           icon: '🏃',
@@ -372,6 +372,35 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
           setWaiterComingTimer((prev) => {
             if (prev <= 1) {
               if (waiterComingRef.current) clearInterval(waiterComingRef.current);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    });
+
+    socket.on('waiter:dismissed', (resData: { tableNumber?: string; message?: string }) => {
+      const currentTable = tableNumber || manualTableNumber;
+      if (currentTable && String(currentTable) === String(resData.tableNumber)) {
+        toast.error(`👨‍🍳 Waiter is currently occupied. Please wait 5 minutes and try again.`, {
+          duration: 10000,
+          icon: '⏳',
+        });
+        // Clear waiter coming timer
+        setWaiterComingTimer(0);
+        if (waiterComingRef.current) {
+          clearInterval(waiterComingRef.current);
+          waiterComingRef.current = null;
+        }
+
+        // Start 5-minute (300s) cooldown timer
+        setWaiterCooldown(300);
+        if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
+        waiterTimerRef.current = setInterval(() => {
+          setWaiterCooldown((prev) => {
+            if (prev <= 1) {
+              if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
               return 0;
             }
             return prev - 1;
@@ -687,7 +716,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
                   : waiterComingTimer > 0
                   ? `Waiter is coming in a few minutes (${formatTimer(waiterComingTimer)})`
                   : waiterCooldown > 0
-                  ? `Wait (${waiterCooldown}s)`
+                  ? `Wait (${formatTimer(waiterCooldown)})`
                   : 'Call Waiter'}
               </span>
             </motion.button>

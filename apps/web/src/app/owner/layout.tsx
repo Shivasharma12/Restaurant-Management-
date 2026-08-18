@@ -111,6 +111,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       { transports: ['websocket'], withCredentials: true }
     );
     socketRef.current = socket;
+    useWaiterStore.getState().setSocket(socket);
 
     socket.emit('join:restaurant', restaurantData.id);
     if (user?.id) {
@@ -121,6 +122,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
     socket.on('waiter:called', (payload: { 
       tableNumber: string; 
       calledAt: string; 
+      restaurantId?: string;
       type?: 'default' | 'payment' | 'addons'; 
       amount?: number; 
       paymentMethod?: string;
@@ -192,6 +194,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
 
     return () => {
       socket.disconnect();
+      useWaiterStore.getState().setSocket(null);
     };
   }, [restaurantData?.id, queryClient]);
 
@@ -350,6 +353,12 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
                 <div className="px-6 pb-6 flex gap-3">
                   <button
                     onClick={() => {
+                      if (socketRef.current && activeWaiterAlert.tableNumber) {
+                        socketRef.current.emit('waiter:dismiss', {
+                          restaurantId: restaurantData?.id,
+                          tableNumber: activeWaiterAlert.tableNumber,
+                        });
+                      }
                       removeWaiterCall(activeWaiterAlert.id);
                       setActiveWaiterAlert(null);
                     }}

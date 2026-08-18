@@ -43,6 +43,15 @@ export default function LoginClient() {
     }
   }, [isAuthenticated, user, router, restaurantSlug]);
 
+  useEffect(() => {
+    const error = searchParams.get('error');
+    if (error === 'GOOGLE_CLIENT_ID_NOT_CONFIGURED') {
+      toast.error('Google Sign-In is not configured. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in the server .env file.', {
+        duration: 8000
+      });
+    }
+  }, [searchParams]);
+
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });

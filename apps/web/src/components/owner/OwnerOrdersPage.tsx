@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import {
   ShoppingBag, UtensilsCrossed, LayoutDashboard, Tag, BarChart3, Settings, LogOut,
   Menu, Search, Clock, ChevronDown, RefreshCw, User, MapPin, Palette,
-  Mail, Phone, CreditCard, Receipt, Check, Wallet, Banknote, Sparkles, Star
+  Mail, Phone, CreditCard, Receipt, Check, Wallet, Banknote, Sparkles, Star, AlertTriangle
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import api from '@/lib/api';
@@ -128,6 +128,17 @@ export function OwnerOrdersPage() {
       qc.invalidateQueries({ queryKey: ['owner-orders'] });
     },
     onError: () => toast.error('Failed to update payment status'),
+  });
+
+  const rejectPaymentMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.patch(`/owner/orders/${id}/payment-reject`);
+    },
+    onSuccess: () => {
+      toast.warning('Customer notified: payment not received');
+      qc.invalidateQueries({ queryKey: ['owner-orders'] });
+    },
+    onError: () => toast.error('Failed to send payment notification'),
   });
 
   const handleLogout = async () => {
@@ -428,22 +439,36 @@ export function OwnerOrdersPage() {
                                   )}
                                 </p>
                               ) : (
-                                <button
-                                  onClick={() => confirmPaymentMutation.mutate(order.id)}
-                                  disabled={confirmPaymentMutation.isPending}
-                                  className="w-full py-2 px-3 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
-                                >
-                                  <Check className="w-3.5 h-3.5" />
-                                  {confirmPaymentMutation.isPending 
-                                    ? 'Confirming...' 
-                                    : order.paymentMethod === 'RAZORPAY'
-                                    ? 'Confirm Direct Online Payment'
-                                    : order.paymentMethod === 'PAY_TO_WAITER' 
-                                    ? 'Confirm Payment Paid to Waiter' 
-                                    : 'Mark as Paid (Received Cash)'}
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => confirmPaymentMutation.mutate(order.id)}
+                                    disabled={confirmPaymentMutation.isPending}
+                                    className="w-full py-2 px-3 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-all disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-sm"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                    {confirmPaymentMutation.isPending 
+                                      ? 'Confirming...' 
+                                      : order.paymentMethod === 'RAZORPAY'
+                                      ? 'Confirm Direct Online Payment Received'
+                                      : order.paymentMethod === 'PAY_TO_WAITER' 
+                                      ? 'Confirm Payment Paid to Waiter' 
+                                      : 'Mark as Paid (Received Cash)'}
+                                  </button>
+                                  {/* Only show "not received" for direct online payment (RAZORPAY) */}
+                                  {order.paymentMethod === 'RAZORPAY' && (
+                                    <button
+                                      onClick={() => rejectPaymentMutation.mutate(order.id)}
+                                      disabled={rejectPaymentMutation.isPending}
+                                      className="w-full py-2 px-3 text-xs font-semibold rounded-lg bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-950/60 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
+                                    >
+                                      <AlertTriangle className="w-3.5 h-3.5" />
+                                      {rejectPaymentMutation.isPending ? 'Notifying Customer...' : 'Payment Not Received — Notify Customer'}
+                                    </button>
+                                  )}
+                                </>
                               )}
                             </div>
+
                             {/* Add-on Order Journey Banner & Actions */}
                             {(order as any).addOnStatus && (
                               <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 rounded-xl p-3 space-y-2 my-2">

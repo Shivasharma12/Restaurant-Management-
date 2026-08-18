@@ -3,9 +3,10 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../utils/AppError';
 import { cacheGet, cacheSet } from '../services/redis.service';
-import { emitNotification, emitWaiterCall } from '../services/socket.service';
+import { emitNotification } from '../services/socket.service';
 import { sendBroadcastEmail } from '../services/email.service';
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { logger } from '../utils/logger';
 
 export async function getAllRestaurants(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -468,17 +469,13 @@ export async function broadcastNotification(req: AuthenticatedRequest, res: Resp
         },
       });
 
-      // 3. Real-time Sockets
+      // 3. Real-time Sockets — only send as notification (NOT as waiter call popup)
       emitNotification(u.id, {
         type: 'BROADCAST',
         title: `📢 ${title}`,
         message,
         createdAt: new Date().toISOString(),
       });
-
-      if (userRestaurant) {
-        emitWaiterCall(userRestaurant.id, 'Dashboard', 'default', undefined, undefined, `📢 ADMIN BROADCAST: ${title} - ${message}`);
-      }
       sentCount++;
     }
 
@@ -529,12 +526,19 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
     }
 
     const recipientEmails = users.map((u) => u.email).filter(Boolean);
-    const result = await sendBroadcastEmail(recipientEmails, subject, message, 'Super Admin Platform Announcement');
+    
+    // Dispatch emails asynchronously in the background so that the API request returns instantly
+    sendBroadcastEmail(recipientEmails, subject, message, 'Super Admin Platform Announcement')
+      .then((result) => {
+        logger.info(`Broadcast email complete: ${result.success} sent, ${result.failed} failed.`);
+      })
+      .catch((err) => {
+        logger.error('Background email broadcast dispatch failed:', err);
+      });
 
     res.json({
       success: true,
-      message: `Broadcast emails dispatched & saved to chat history: ${result.success} sent, ${result.failed} failed.`,
-      data: result,
+      message: `Broadcast email dispatch initiated for ${recipientEmails.length} recipients in the background.`,
     });
   } catch (error) { next(error); }
 }

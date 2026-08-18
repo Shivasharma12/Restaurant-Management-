@@ -80,6 +80,18 @@ export function initializeSocketService(socketServer: SocketIOServer): void {
       });
     });
 
+    // Owner dismisses waiter call — notify customer on table
+    socket.on('waiter:dismiss', (data: { restaurantId: string; tableNumber: string }) => {
+      const { restaurantId, tableNumber } = data;
+      logger.info(`Owner dismissed waiter call for restaurant ${restaurantId}, table ${tableNumber}`);
+      io.to(`restaurant:${restaurantId}`).emit('waiter:dismissed', {
+        tableNumber,
+        restaurantId,
+        message: `Waiter is currently occupied. Please wait 5 minutes and try again.`,
+        timestamp: new Date().toISOString(),
+      });
+    });
+
     socket.on('disconnect', () => {
       logger.info(`Socket disconnected: ${socket.id}`);
     });
@@ -146,6 +158,26 @@ export function emitWaiterResponse(restaurantId: string, tableNumber: string): v
     tableNumber,
     restaurantId,
     message: `Waiter is on the way to Table ${tableNumber}!`,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function emitWaiterDismiss(restaurantId: string, tableNumber: string): void {
+  if (!io) return;
+  io.to(`restaurant:${restaurantId}`).emit('waiter:dismissed', {
+    tableNumber,
+    restaurantId,
+    message: `Waiter is currently occupied. Please wait 5 minutes and try again.`,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export function emitPaymentNotReceived(orderId: string, amount: number): void {
+  if (!io) return;
+  io.to(`order:${orderId}`).emit('payment:not_received', {
+    orderId,
+    amount,
+    message: 'Payment Not Received',
     timestamp: new Date().toISOString(),
   });
 }

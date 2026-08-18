@@ -49,7 +49,18 @@ export function WaiterBell() {
                 </div>
                 {waiterCalls.length > 0 && (
                   <button
-                    onClick={clearAll}
+                    onClick={() => {
+                      const socket = useWaiterStore.getState().socket;
+                      waiterCalls.forEach((call) => {
+                        if (socket && call.restaurantId) {
+                          socket.emit('waiter:dismiss', {
+                            restaurantId: call.restaurantId,
+                            tableNumber: call.tableNumber,
+                          });
+                        }
+                      });
+                      clearAll();
+                    }}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
                     Clear all
@@ -136,7 +147,16 @@ export function WaiterBell() {
                             </div>
                           </div>
                           <button
-                            onClick={() => removeWaiterCall(call.id)}
+                            onClick={() => {
+                              const socket = useWaiterStore.getState().socket;
+                              if (socket && call.restaurantId) {
+                                socket.emit('waiter:dismiss', {
+                                  restaurantId: call.restaurantId,
+                                  tableNumber: call.tableNumber,
+                                });
+                              }
+                              removeWaiterCall(call.id);
+                            }}
                             className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 ml-1"
                           >
                             <X className="w-3.5 h-3.5" />
