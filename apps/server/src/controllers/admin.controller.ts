@@ -4,7 +4,11 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../utils/AppError';
 import { cacheGet, cacheSet } from '../services/redis.service';
 import { emitNotification } from '../services/socket.service';
-import { sendBroadcastEmail } from '../services/email.service';
+import {
+  sendBroadcastEmail,
+  sendRestaurantWelcomeEmail,
+  sendRestaurantApprovalEmail,
+} from '../services/email.service';
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { logger } from '../utils/logger';
 
@@ -56,7 +60,10 @@ export async function approveRestaurant(req: AuthenticatedRequest, res: Response
     const id = req.params.id as string;
     const { isApproved } = req.body as { isApproved: boolean };
 
-    const restaurant = await prisma.restaurant.findFirst({ where: { id, deletedAt: null } });
+    const restaurant = await prisma.restaurant.findFirst({
+      where: { id, deletedAt: null },
+      include: { owner: true },
+    });
     if (!restaurant) throw new AppError('Restaurant not found.', 404, 'RESTAURANT_NOT_FOUND');
 
     const updated = await prisma.restaurant.update({
@@ -75,6 +82,19 @@ export async function approveRestaurant(req: AuthenticatedRequest, res: Response
           : 'Your restaurant approval has been revoked. Please contact support.',
       },
     });
+
+    // Send email notification to restaurant owner
+    if (restaurant.owner?.email) {
+      sendRestaurantApprovalEmail(
+        restaurant.owner.email,
+        restaurant.owner.name,
+        restaurant.name,
+        isApproved,
+        restaurant.slug
+      ).catch((err) => {
+        logger.error(`Failed to send restaurant approval email to ${restaurant.owner?.email}:`, err);
+      });
+    }
 
     res.json({ success: true, data: { isApproved: updated.isApproved }, message: `Restaurant ${isApproved ? 'approved' : 'approval revoked'}` });
   } catch (error) { next(error); }
@@ -295,17 +315,21 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
       throw new AppError('Restaurant name, owner name, and owner email are required.', 400, 'BAD_REQUEST');
     }
 
+    const normalizedOwnerEmail = ownerEmail.toLowerCase().trim();
+
     // 1. Find or create owner user
     let owner = await prisma.user.findFirst({
-      where: { email: ownerEmail, deletedAt: null },
+      where: { email: normalizedOwnerEmail, deletedAt: null },
     });
 
+    let tempPassword: string | undefined = undefined;
     if (!owner) {
-      const passwordHash = await bcrypt.hash('Owner@123456', 12);
+      tempPassword = 'Owner@123456';
+      const passwordHash = await bcrypt.hash(tempPassword, 12);
       owner = await prisma.user.create({
         data: {
           name: ownerName,
-          email: ownerEmail,
+          email: normalizedOwnerEmail,
           phone: ownerPhone || null,
           role: 'RESTAURANT_OWNER',
           passwordHash,
@@ -355,10 +379,21 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
       },
     });
 
+    // 4. Send email notification & verification to restaurant owner
+    sendRestaurantWelcomeEmail(
+      normalizedOwnerEmail,
+      ownerName,
+      name,
+      slug,
+      tempPassword
+    ).catch((err) => {
+      logger.error(`Failed to send restaurant welcome email to ${normalizedOwnerEmail}:`, err);
+    });
+
     res.status(201).json({
       success: true,
       data: { restaurant },
-      message: 'Restaurant created successfully!',
+      message: 'Restaurant created successfully and notification email sent to owner!',
     });
   } catch (error) {
     next(error);

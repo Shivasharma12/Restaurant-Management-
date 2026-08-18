@@ -7,7 +7,9 @@ import { AppError } from '../utils/AppError';
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
+  sendRestaurantWelcomeEmail,
 } from '../services/email.service';
+import { logger } from '../utils/logger';
 import { ensureDatabaseSeeded } from '../utils/autoSeed';
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
@@ -120,13 +122,18 @@ export async function register(req: Request, res: Response, next: NextFunction):
         await prisma.restaurant.findUnique({ where: { slug } })
       );
 
-      await prisma.restaurant.create({
+      const restaurant = await prisma.restaurant.create({
         data: {
           name: `${name}'s Restaurant`,
           slug,
           ownerId: user.id,
           isApproved: false,
         },
+      });
+
+      const userEmail = user.email.includes(':') ? user.email.split(':')[1] : user.email;
+      sendRestaurantWelcomeEmail(userEmail, name, restaurant.name, slug).catch((err) => {
+        logger.error(`Failed to send restaurant welcome email on registration to ${userEmail}:`, err);
       });
     }
 
