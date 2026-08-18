@@ -163,10 +163,6 @@ export async function getGlobalAnalytics(req: AuthenticatedRequest, res: Respons
     const days = period === '30d' ? 30 : period === 'month' ? 30 : 7;
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    const cacheKey = `admin:analytics:${period}`;
-    const cached = await cacheGet(cacheKey);
-    if (cached) { res.json({ success: true, data: cached }); return; }
-
     const [totalOrders, totalRevenue, totalUsers, totalRestaurants, topRestaurants, customerGrowth] = await Promise.all([
       prisma.order.count({ where: { createdAt: { gte: startDate }, status: { not: 'CANCELLED' } } }),
       prisma.order.aggregate({
@@ -174,7 +170,7 @@ export async function getGlobalAnalytics(req: AuthenticatedRequest, res: Respons
         _sum: { total: true },
       }),
       prisma.user.count({ where: { role: 'CUSTOMER', deletedAt: null } }),
-      prisma.restaurant.count({ where: { isApproved: true, deletedAt: null } }),
+      prisma.restaurant.count({ where: { deletedAt: null } }),
       prisma.order.groupBy({
         by: ['restaurantId'],
         where: { createdAt: { gte: startDate }, status: { not: 'CANCELLED' } },
@@ -228,7 +224,6 @@ export async function getGlobalAnalytics(req: AuthenticatedRequest, res: Respons
       customerGrowth,
     };
 
-    await cacheSet(cacheKey, data, 30 * 60); // 30 min cache
     res.json({ success: true, data });
   } catch (error) { next(error); }
 }
@@ -526,6 +521,13 @@ export async function broadcastEmail(req: AuthenticatedRequest, res: Response, n
     }
 
     const recipientEmails = users.map((u) => u.email).filter(Boolean);
+    if (req.user?.email && !recipientEmails.includes(req.user.email)) {
+      recipientEmails.push(req.user.email);
+    }
+    const adminSmtpEmail = process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL;
+    if (adminSmtpEmail && !recipientEmails.includes(adminSmtpEmail)) {
+      recipientEmails.push(adminSmtpEmail);
+    }
     
     // Dispatch emails asynchronously in the background so that the API request returns instantly
     sendBroadcastEmail(recipientEmails, subject, message, 'Super Admin Platform Announcement')
