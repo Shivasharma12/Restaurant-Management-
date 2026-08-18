@@ -524,6 +524,81 @@ export async function googleAuth(req: Request, res: Response, next: NextFunction
   }
 }
 
+export async function googleDirectAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { email, name } = req.body as { email: string; name?: string };
+
+    if (!email || !email.includes('@')) {
+      throw new AppError('Please enter a valid Gmail or Google email address.', 400, 'BAD_REQUEST');
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    
+    // Auto generate clean display name if not provided
+    const nameFromEmail = normalizedEmail
+      .split('@')[0]
+      .replace(/[._]/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+    const displayName = name && name.trim().length > 0 ? name.trim() : nameFromEmail;
+
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: normalizedEmail },
+          { googleId: `google-user-${normalizedEmail}` },
+        ],
+        deletedAt: null,
+      },
+    });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          name: displayName,
+          email: normalizedEmail,
+          googleId: `google-user-${normalizedEmail}`,
+          isVerified: true,
+          role: 'CUSTOMER',
+        },
+      });
+    } else if (!user.googleId) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { googleId: `google-user-${normalizedEmail}`, isVerified: true },
+      });
+    }
+
+    const accessToken = generateAccessToken({
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+    });
+    const newRefreshToken = generateRefreshToken(user.id);
+    setRefreshTokenCookie(res, newRefreshToken);
+
+    const cleanUser = {
+      ...user,
+      email: user.email.includes(':') ? user.email.split(':')[1] : user.email,
+    };
+
+    res.json({
+      success: true,
+      data: {
+        accessToken,
+        user: cleanUser,
+      },
+      message: `Signed in as ${user.email} via Google!`,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function googleCallback(
   req: Request,
   res: Response,

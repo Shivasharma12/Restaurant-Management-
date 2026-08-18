@@ -10,6 +10,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, Mail, Lock, Loader2, QrCode, User, Phone } from 'lucide-react';
 import api, { API_BASE_URL } from '@/lib/api';
 import { toast } from 'sonner';
+import { GoogleSignInModal } from '@/components/GoogleSignInModal';
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -35,9 +36,14 @@ export default function RegisterClient() {
   const restaurantSlug = searchParams.get('restaurant');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleModalOpen, setGoogleModalOpen] = useState(false);
 
   const handleGoogleAuth = () => {
-    window.location.href = `${API_BASE_URL}/auth/google`;
+    if (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID && !process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID.startsWith('your-')) {
+      window.location.href = `${API_BASE_URL}/auth/google`;
+    } else {
+      setGoogleModalOpen(true);
+    }
   };
 
   const { register, handleSubmit, formState: { errors } } = useForm<RegisterForm>({
@@ -199,6 +205,12 @@ export default function RegisterClient() {
           </p>
         </div>
       </motion.div>
+
+      <GoogleSignInModal
+        isOpen={googleModalOpen}
+        onClose={() => setGoogleModalOpen(false)}
+        restaurantSlug={restaurantSlug}
+      />
     </div>
   );
 }
