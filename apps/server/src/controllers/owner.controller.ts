@@ -1015,9 +1015,12 @@ export async function seedDemoMenu(req: AuthenticatedRequest, res: Response, nex
         name: 'Starters',
         sortOrder: 0,
         items: [
-          { name: 'Paneer Tikka', description: 'Soft paneer cubes marinated in spiced yogurt and grilled to perfection.', price: 240, isVeg: true, badges: ['POPULAR', 'BEST_SELLER'], image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?q=80&w=800&auto=format&fit=crop' },
-          { name: 'Crispy Corn', description: 'Crunchy sweet corn kernels tossed with Indian spices and fresh lime.', price: 180, isVeg: true, badges: ['TRENDING'], image: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Paneer Tikka', description: 'Soft paneer cubes marinated in spiced yogurt and grilled to perfection in tandoor.', price: 240, isVeg: true, badges: ['POPULAR', 'BEST_SELLER'], image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Crispy Corn', description: 'Crunchy sweet corn kernels tossed with Indian spices, fresh lime and coriander.', price: 180, isVeg: true, badges: ['TRENDING'], image: 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?q=80&w=800&auto=format&fit=crop' },
           { name: 'Chicken 65', description: 'Spicy, deep-fried chicken bites tossed with curry leaves and green chilies.', price: 280, isVeg: false, badges: ['POPULAR'], image: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Tandoori Chicken', description: 'Whole chicken marinated in mustard oil, lemon juice & spices, roasted over charcoal.', price: 320, isVeg: false, badges: ['BEST_SELLER'], image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Veg Spring Rolls', description: 'Crispy golden rolls stuffed with shredded vegetables & glass noodles.', price: 190, isVeg: true, badges: ['NEW'], image: 'https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Hara Bhara Kebab', description: 'Pan-fried spinach, green peas and potato patties infused with aromatic herbs.', price: 210, isVeg: true, badges: ['POPULAR'], image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=800&auto=format&fit=crop' },
         ],
       },
       {
@@ -1026,7 +1029,10 @@ export async function seedDemoMenu(req: AuthenticatedRequest, res: Response, nex
         items: [
           { name: 'Butter Chicken', description: 'Tender chicken pieces cooked in a rich, creamy tomato butter gravy.', price: 350, isVeg: false, badges: ['BEST_SELLER'], image: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800&auto=format&fit=crop' },
           { name: 'Dal Makhani', description: 'Slow-cooked black lentils simmered overnight with butter and fresh cream.', price: 260, isVeg: true, badges: ['POPULAR'], image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop' },
-          { name: 'Paneer Butter Masala', description: 'Cottage cheese cubes cooked in a aromatic, spiced tomato cream sauce.', price: 320, isVeg: true, badges: ['NEW'], image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Paneer Butter Masala', description: 'Cottage cheese cubes cooked in an aromatic, spiced tomato cream sauce.', price: 320, isVeg: true, badges: ['NEW'], image: 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Kadai Paneer', description: 'Fresh paneer tossed with capsicum, onion, and coarse Indian spices in a wok.', price: 310, isVeg: true, badges: ['TRENDING'], image: 'https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Mutton Rogan Josh', description: 'Authentic Kashmiri style tender lamb curry slow cooked with saffron and spices.', price: 440, isVeg: false, badges: ['BEST_SELLER'], image: 'https://images.unsplash.com/photo-1545247181-516773cae754?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Malai Kofta', description: 'Melt-in-mouth cottage cheese and cashew dumplings in a rich white cashew curry.', price: 290, isVeg: true, badges: ['POPULAR'], image: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?q=80&w=800&auto=format&fit=crop' },
         ],
       },
       {
@@ -1036,14 +1042,26 @@ export async function seedDemoMenu(req: AuthenticatedRequest, res: Response, nex
           { name: 'Butter Naan', description: 'Soft, fluffy tandoori flatbread brushed with fresh butter.', price: 50, isVeg: true, badges: [], image: 'https://images.unsplash.com/photo-1626074353765-517a681e40be?q=80&w=800&auto=format&fit=crop' },
           { name: 'Garlic Naan', description: 'Leavened Indian flatbread topped with minced garlic and herbs.', price: 65, isVeg: true, badges: ['POPULAR'], image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=800&auto=format&fit=crop' },
           { name: 'Hyderabadi Chicken Biryani', description: 'Fragrant basmati rice layered with marinated chicken and aromatic spices.', price: 340, isVeg: false, badges: ['BEST_SELLER'], image: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Veg Dum Biryani', description: 'Slow cooked aromatic rice layered with farm fresh vegetables, saffron and mint.', price: 260, isVeg: true, badges: ['POPULAR'], image: 'https://images.unsplash.com/photo-1633945274405-b6c8069047b0?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Jeera Rice', description: 'Aromatic long-grain basmati rice tempered with cumin seeds and ghee.', price: 150, isVeg: true, badges: [], image: 'https://images.unsplash.com/photo-1596797038530-2c107229654b?q=80&w=800&auto=format&fit=crop' },
         ],
       },
       {
-        name: 'Desserts & Drinks',
+        name: 'Desserts',
         sortOrder: 3,
         items: [
           { name: 'Gulab Jamun', description: 'Warm milk-solid dumplings soaked in cardamom sugar syrup.', price: 120, isVeg: true, badges: ['BEST_SELLER'], image: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Rasmalai', description: 'Soft flattened paneer discs soaked in chilled saffron flavored sweet milk.', price: 140, isVeg: true, badges: ['POPULAR'], image: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Matka Kulfi', description: 'Traditional thick Indian ice cream infused with pistachios & cardamom.', price: 100, isVeg: true, badges: ['TRENDING'], image: 'https://images.unsplash.com/photo-1570197788417-0e82375c9371?q=80&w=800&auto=format&fit=crop' },
+        ],
+      },
+      {
+        name: 'Beverages',
+        sortOrder: 4,
+        items: [
           { name: 'Mango Lassi', description: 'Creamy yogurt drink blended with sweet Alphonso mangoes.', price: 110, isVeg: true, badges: ['POPULAR'], image: 'https://images.unsplash.com/photo-1546173159-315724a31696?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Fresh Lime Soda', description: 'Refreshing sparkling soda infused with freshly squeezed lime and mint.', price: 80, isVeg: true, badges: [], image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=800&auto=format&fit=crop' },
+          { name: 'Masala Chai', description: 'Aromatic Indian tea brewed with whole spices, milk and ginger.', price: 40, isVeg: true, badges: [], image: 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?q=80&w=800&auto=format&fit=crop' },
         ],
       },
     ];
@@ -1078,7 +1096,8 @@ export async function seedDemoMenu(req: AuthenticatedRequest, res: Response, nex
               image: item.image,
             },
           });
-        } else if (!itemExists.image) {
+        } else {
+          // Force update image so no items remain without food image
           await prisma.menuItem.update({
             where: { id: itemExists.id },
             data: { image: item.image },

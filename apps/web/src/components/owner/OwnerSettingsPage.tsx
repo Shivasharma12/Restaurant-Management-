@@ -460,18 +460,7 @@ export function OwnerSettingsPage() {
                       <span className="ml-2 text-orange-500 font-medium">↑ Click &quot;Generate Code&quot; to get a unique URL that replaces readable names</span>
                     </p>
                   </div>
-                  <div className="flex items-center gap-3 py-1 bg-muted/10 border border-border/50 rounded-xl px-3.5 py-2.5">
-                    <input
-                      type="checkbox"
-                      id="hasDelivery"
-                      checked={form.hasDelivery ?? true}
-                      onChange={(e) => setForm(f => ({ ...f, hasDelivery: e.target.checked }))}
-                      className="w-4 h-4 text-primary border-border rounded focus:ring-primary/30 bg-muted/30 cursor-pointer"
-                    />
-                    <label htmlFor="hasDelivery" className="text-sm font-medium text-foreground select-none cursor-pointer">
-                      Enable Home Delivery for Customers
-                    </label>
-                  </div>
+
                   <div>
                     <label className="text-sm font-medium text-muted-foreground mb-1.5 block">Description</label>
                     <textarea value={form.description ?? ''} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}

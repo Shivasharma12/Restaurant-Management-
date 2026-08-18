@@ -141,30 +141,34 @@ export async function ensureDatabaseSeeded(): Promise<void> {
       });
     }
 
-    // Automatically update existing menu items in database that have null/empty images with high quality food images
-    const itemsWithoutImages = await prisma.menuItem.findMany({
-      where: { OR: [{ image: null }, { image: '' }] },
+    // Update ALL menu items in database with high quality food photos if missing or placeholder
+    const allMenuItems = await prisma.menuItem.findMany({
+      where: { deletedAt: null },
     });
 
-    if (itemsWithoutImages.length > 0) {
-      for (const item of itemsWithoutImages) {
-        let imageUrl = 'https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=800&auto=format&fit=crop';
-        const nameLower = item.name.toLowerCase();
-        if (nameLower.includes('paneer')) imageUrl = 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?q=80&w=800&auto=format&fit=crop';
-        else if (nameLower.includes('chicken')) imageUrl = 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800&auto=format&fit=crop';
-        else if (nameLower.includes('naan') || nameLower.includes('roti') || nameLower.includes('bread')) imageUrl = 'https://images.unsplash.com/photo-1626074353765-517a681e40be?q=80&w=800&auto=format&fit=crop';
-        else if (nameLower.includes('biryani') || nameLower.includes('rice')) imageUrl = 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=800&auto=format&fit=crop';
-        else if (nameLower.includes('jamun') || nameLower.includes('dessert') || nameLower.includes('sweet')) imageUrl = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=800&auto=format&fit=crop';
-        else if (nameLower.includes('lassi') || nameLower.includes('drink') || nameLower.includes('mango')) imageUrl = 'https://images.unsplash.com/photo-1546173159-315724a31696?q=80&w=800&auto=format&fit=crop';
-        else if (nameLower.includes('corn')) imageUrl = 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?q=80&w=800&auto=format&fit=crop';
-        else if (nameLower.includes('dal') || nameLower.includes('makhani')) imageUrl = 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop';
-        
-        await prisma.menuItem.update({
-          where: { id: item.id },
-          data: { image: imageUrl },
-        });
+    if (allMenuItems.length > 0) {
+      for (const item of allMenuItems) {
+        if (!item.image || item.image.includes('placeholder') || item.image.trim() === '') {
+          let imageUrl = 'https://images.unsplash.com/photo-1540420773420-3366772f4999?q=80&w=800&auto=format&fit=crop';
+          const nameLower = item.name.toLowerCase();
+          if (nameLower.includes('paneer')) imageUrl = 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('chicken')) imageUrl = 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('naan') || nameLower.includes('roti') || nameLower.includes('bread')) imageUrl = 'https://images.unsplash.com/photo-1626074353765-517a681e40be?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('biryani') || nameLower.includes('rice')) imageUrl = 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('jamun') || nameLower.includes('dessert') || nameLower.includes('sweet') || nameLower.includes('rasmalai') || nameLower.includes('kulfi')) imageUrl = 'https://images.unsplash.com/photo-1601050690597-df0568f70950?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('lassi') || nameLower.includes('drink') || nameLower.includes('mango') || nameLower.includes('chai') || nameLower.includes('soda')) imageUrl = 'https://images.unsplash.com/photo-1546173159-315724a31696?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('corn')) imageUrl = 'https://images.unsplash.com/photo-1551782450-a2132b4ba21d?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('dal') || nameLower.includes('makhani')) imageUrl = 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('kebab') || nameLower.includes('roll') || nameLower.includes('tandoori')) imageUrl = 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=800&auto=format&fit=crop';
+          else if (nameLower.includes('mutton') || nameLower.includes('curry') || nameLower.includes('kofta')) imageUrl = 'https://images.unsplash.com/photo-1545247181-516773cae754?q=80&w=800&auto=format&fit=crop';
+
+          await prisma.menuItem.update({
+            where: { id: item.id },
+            data: { image: imageUrl },
+          });
+        }
       }
-      logger.info(`📸 Updated ${itemsWithoutImages.length} menu items with food images.`);
+      logger.info(`📸 Ensured food photos for ${allMenuItems.length} menu items.`);
     }
 
     logger.info('🎉 Auto-seed complete! Super Admin (admin@qrrestaurant.com), Owner (owner@upstates.com), Customer (customer@example.com), and Restaurant /r/upstates are active.');
