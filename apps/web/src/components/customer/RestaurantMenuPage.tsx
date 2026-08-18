@@ -51,6 +51,8 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
   const [cartOpen, setCartOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  type WaiterStatus = 'IDLE' | 'PENDING' | 'COMING' | 'OCCUPIED';
+  const [waiterStatus, setWaiterStatus] = useState<WaiterStatus>('IDLE');
   const [waiterCooldown, setWaiterCooldown] = useState(0);
   const [waiterLoading, setWaiterLoading] = useState(false);
   const [showTableInput, setShowTableInput] = useState(false);
@@ -58,6 +60,131 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
   const [waiterComingTimer, setWaiterComingTimer] = useState(0);
   const waiterComingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const waiterTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearWaiterTimers = useCallback(() => {
+    if (waiterTimerRef.current) {
+      clearInterval(waiterTimerRef.current);
+      waiterTimerRef.current = null;
+    }
+    if (waiterComingRef.current) {
+      clearInterval(waiterComingRef.current);
+      waiterComingRef.current = null;
+    }
+  }, []);
+
+  const getTableStorageKey = useCallback((tbl?: string | null) => {
+    const activeTbl = tbl || tableNumber || manualTableNumber || (typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null);
+    return activeTbl ? `${slug}_t_${String(activeTbl).trim()}` : null;
+  }, [slug, tableNumber, manualTableNumber]);
+
+  const resetWaiterState = useCallback((tbl?: string | null) => {
+    clearWaiterTimers();
+    setWaiterStatus('IDLE');
+    setWaiterCooldown(0);
+    setWaiterComingTimer(0);
+    if (typeof window !== 'undefined') {
+      const key = getTableStorageKey(tbl);
+      if (key) {
+        localStorage.removeItem(`waiter_status_${key}`);
+        localStorage.removeItem(`waiter_timer_until_${key}`);
+      }
+    }
+  }, [clearWaiterTimers, getTableStorageKey]);
+
+  const startComingTimer = useCallback((seconds: number, tbl?: string | null) => {
+    clearWaiterTimers();
+    setWaiterStatus('COMING');
+    setWaiterComingTimer(seconds);
+    setWaiterCooldown(0);
+
+    const until = Date.now() + seconds * 1000;
+    const key = getTableStorageKey(tbl);
+    if (typeof window !== 'undefined' && key) {
+      localStorage.setItem(`waiter_status_${key}`, 'COMING');
+      localStorage.setItem(`waiter_timer_until_${key}`, String(until));
+    }
+
+    waiterComingRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      setWaiterComingTimer(remaining);
+      if (remaining <= 0) {
+        resetWaiterState(tbl);
+      }
+    }, 1000);
+  }, [clearWaiterTimers, getTableStorageKey, resetWaiterState]);
+
+  const startOccupiedTimer = useCallback((seconds: number, tbl?: string | null) => {
+    clearWaiterTimers();
+    setWaiterStatus('OCCUPIED');
+    setWaiterCooldown(seconds);
+    setWaiterComingTimer(0);
+
+    const until = Date.now() + seconds * 1000;
+    const key = getTableStorageKey(tbl);
+    if (typeof window !== 'undefined' && key) {
+      localStorage.setItem(`waiter_status_${key}`, 'OCCUPIED');
+      localStorage.setItem(`waiter_timer_until_${key}`, String(until));
+    }
+
+    waiterTimerRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      setWaiterCooldown(remaining);
+      if (remaining <= 0) {
+        resetWaiterState(tbl);
+      }
+    }, 1000);
+  }, [clearWaiterTimers, getTableStorageKey, resetWaiterState]);
+
+  const startPendingState = useCallback((tbl?: string | null) => {
+    clearWaiterTimers();
+    setWaiterStatus('PENDING');
+    setWaiterCooldown(0);
+    setWaiterComingTimer(0);
+
+    const until = Date.now() + 60000; // 60s pending window
+    const key = getTableStorageKey(tbl);
+    if (typeof window !== 'undefined' && key) {
+      localStorage.setItem(`waiter_status_${key}`, 'PENDING');
+      localStorage.setItem(`waiter_timer_until_${key}`, String(until));
+    }
+
+    waiterTimerRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+      if (remaining <= 0) {
+        resetWaiterState(tbl);
+      }
+    }, 1000);
+  }, [clearWaiterTimers, getTableStorageKey, resetWaiterState]);
+
+  // Restore running timer state ONLY for the specific table
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const key = getTableStorageKey();
+    if (!key) {
+      setWaiterStatus('IDLE');
+      setWaiterCooldown(0);
+      setWaiterComingTimer(0);
+      return;
+    }
+
+    const storedStatus = localStorage.getItem(`waiter_status_${key}`) as WaiterStatus | null;
+    const storedUntil = Number(localStorage.getItem(`waiter_timer_until_${key}`) || 0);
+
+    if (storedStatus && storedUntil > Date.now()) {
+      const remaining = Math.ceil((storedUntil - Date.now()) / 1000);
+      if (storedStatus === 'COMING') {
+        startComingTimer(remaining, tableNumber || manualTableNumber);
+      } else if (storedStatus === 'OCCUPIED') {
+        startOccupiedTimer(remaining, tableNumber || manualTableNumber);
+      } else if (storedStatus === 'PENDING') {
+        startPendingState(tableNumber || manualTableNumber);
+      }
+    } else {
+      localStorage.removeItem(`waiter_status_${key}`);
+      localStorage.removeItem(`waiter_timer_until_${key}`);
+      setWaiterStatus('IDLE');
+    }
+  }, [getTableStorageKey, startComingTimer, startOccupiedTimer, startPendingState, tableNumber, manualTableNumber]);
 
   const { items: cartItems, itemCount, setRestaurant } = useCartStore();
   const { user: rawUser, logout } = useAuthStore();
@@ -313,99 +440,76 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
   // Clean up cooldown timer on unmount
   useEffect(() => {
     return () => {
-      if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
+      clearWaiterTimers();
     };
-  }, []);
+  }, [clearWaiterTimers]);
 
   const handleCallWaiter = useCallback(async (tableNum?: string) => {
-    const effectiveTable = tableNum ?? tableNumber;
-    if (!effectiveTable || waiterCooldown > 0 || waiterLoading) return;
+    const effectiveTable = tableNum ?? tableNumber ?? manualTableNumber ?? (typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null);
+    if (!effectiveTable || waiterStatus !== 'IDLE' || waiterLoading) return;
     setWaiterLoading(true);
     try {
       const token = searchParams?.token || localStorage.getItem(`table_token_${slug}`) || '';
       await api.post(`/menu/${slug}/call-waiter`, { tableNumber: effectiveTable, tableToken: token });
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`table_num_${slug}`, String(effectiveTable).trim());
+      }
+      setManualTableNumber(String(effectiveTable).trim());
+
       toast.success(`🙋 Waiter has been called for Table ${effectiveTable}!`, {
         description: 'Please wait, someone will be with you shortly.',
         duration: 4000,
       });
-      // Start cooldown
-      setWaiterCooldown(WAITER_COOLDOWN_SECONDS);
+
       setShowTableInput(false);
-      setManualTableNumber('');
-      waiterTimerRef.current = setInterval(() => {
-        setWaiterCooldown((prev) => {
-          if (prev <= 1) {
-            if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+      startPendingState(effectiveTable);
     } catch {
       toast.error('Could not call waiter. Please try again.');
     } finally {
       setWaiterLoading(false);
     }
-  }, [slug, tableNumber, waiterCooldown, waiterLoading]);
+  }, [slug, tableNumber, manualTableNumber, waiterStatus, waiterLoading, searchParams, startPendingState]);
 
   useEffect(() => {
     if (!data?.restaurant?.id) return;
     const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL ?? process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') ?? 'http://localhost:4000';
-    const socket = io(socketUrl);
+    const socket = io(socketUrl, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+    });
 
-    socket.emit('join:restaurant', data.restaurant.id);
     if (activeUser?.id) {
       socket.emit('join:user', activeUser.id);
     }
 
+    const storedTable = typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null;
+    const activeTable = tableNumber || manualTableNumber || storedTable;
+    if (activeTable) {
+      socket.emit('join:table', { restaurantId: data.restaurant.id, tableNumber: String(activeTable).trim() });
+    }
+
     socket.on('waiter:responded', (resData: { tableNumber?: string; message?: string }) => {
-      const currentTable = tableNumber || manualTableNumber;
-      if (currentTable && String(currentTable) === String(resData.tableNumber)) {
-        toast.success(`👨‍🍳 Waiter is coming in a few minutes!`, {
-          duration: 10000,
+      const currentTable = tableNumber || manualTableNumber || (typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null);
+      if (!currentTable || !resData?.tableNumber) return;
+      if (String(currentTable).trim() === String(resData.tableNumber).trim()) {
+        toast.success(`👨‍🍳 Waiter is coming! Someone will be with you shortly.`, {
+          duration: 8000,
           icon: '🏃',
         });
-        // Start 2-minute (120s) timer for waiter coming
-        setWaiterComingTimer(120);
-        if (waiterComingRef.current) clearInterval(waiterComingRef.current);
-        waiterComingRef.current = setInterval(() => {
-          setWaiterComingTimer((prev) => {
-            if (prev <= 1) {
-              if (waiterComingRef.current) clearInterval(waiterComingRef.current);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        startComingTimer(60, resData.tableNumber);
       }
     });
 
     socket.on('waiter:dismissed', (resData: { tableNumber?: string; message?: string }) => {
-      const currentTable = tableNumber || manualTableNumber;
-      if (currentTable && String(currentTable) === String(resData.tableNumber)) {
-        toast.error(`👨‍🍳 Waiter is currently occupied. Please wait 5 minutes and try again.`, {
-          duration: 10000,
+      const currentTable = tableNumber || manualTableNumber || (typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null);
+      if (!currentTable || !resData?.tableNumber) return;
+      if (String(currentTable).trim() === String(resData.tableNumber).trim()) {
+        toast.error(`👨‍🍳 Waiter is occupied right now. You can press the call waiter button again after 30 seconds.`, {
+          duration: 8000,
           icon: '⏳',
         });
-        // Clear waiter coming timer
-        setWaiterComingTimer(0);
-        if (waiterComingRef.current) {
-          clearInterval(waiterComingRef.current);
-          waiterComingRef.current = null;
-        }
-
-        // Start 5-minute (300s) cooldown timer
-        setWaiterCooldown(300);
-        if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
-        waiterTimerRef.current = setInterval(() => {
-          setWaiterCooldown((prev) => {
-            if (prev <= 1) {
-              if (waiterTimerRef.current) clearInterval(waiterTimerRef.current);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        startOccupiedTimer(30, resData.tableNumber);
       }
     });
 
@@ -448,7 +552,11 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
 
   const cartCount = itemCount();
 
-  if (error) {
+  if (isLoading) {
+    return <MenuSkeleton />;
+  }
+
+  if (error || !data || !data.restaurant) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-8 text-center">
         <div className="text-6xl mb-4">🔍</div>
@@ -458,11 +566,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
     );
   }
 
-  if (isLoading) {
-    return <MenuSkeleton />;
-  }
-
-  const { restaurant, categories } = data!;
+  const { restaurant, categories = [] } = data;
   
   const isPreview = searchParams?.preview === 'true';
   const themeColor = isPreview && searchParams?.themeColor ? searchParams.themeColor : (restaurant.themeColor ?? '#E85D04');
@@ -684,39 +788,36 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
           {/* Upper Section Extra Big Call Waiter Button */}
           <div className="pb-2">
             <motion.button
-              whileHover={{ scale: (waiterCooldown > 0 || waiterComingTimer > 0) ? 1 : 1.05 }}
-              whileTap={{ scale: (waiterCooldown > 0 || waiterComingTimer > 0) ? 1 : 0.95 }}
+              whileHover={{ scale: waiterStatus !== 'IDLE' ? 1 : 1.05 }}
+              whileTap={{ scale: waiterStatus !== 'IDLE' ? 1 : 0.95 }}
               onClick={() => {
-                if (tableNumber) {
+                if (tableNumber || manualTableNumber || (typeof window !== 'undefined' && localStorage.getItem(`table_num_${slug}`))) {
                   handleCallWaiter();
                 } else {
                   setShowTableInput((v) => !v);
                 }
               }}
-              disabled={waiterCooldown > 0 || waiterComingTimer > 0 || waiterLoading}
-              className={`px-6 py-3.5 rounded-2xl text-white font-extrabold text-base md:text-lg shadow-2xl flex items-center justify-center gap-2.5 transition-all ${
-                waiterComingTimer > 0
-                  ? 'ring-4 ring-emerald-500/40 shadow-emerald-500/30'
-                  : waiterCooldown > 0
-                  ? 'opacity-60 cursor-not-allowed'
-                  : 'hover:shadow-orange-500/40 ring-4 ring-orange-500/20'
+              disabled={waiterStatus !== 'IDLE' || waiterLoading}
+              className={`px-6 py-3.5 rounded-full text-white font-bold text-base md:text-lg shadow-xl flex items-center justify-center gap-2.5 transition-all border ${
+                waiterStatus === 'COMING'
+                  ? 'bg-[#10b981] border-[#047857] shadow-emerald-500/30 ring-4 ring-emerald-500/20'
+                  : waiterStatus === 'OCCUPIED'
+                  ? 'bg-[#313d4f] border-[#222c3a] text-white opacity-95 cursor-not-allowed shadow-lg'
+                  : waiterStatus === 'PENDING'
+                  ? 'bg-amber-500 border-amber-600 animate-pulse text-white shadow-amber-500/20 ring-4 ring-amber-500/20 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500 border-orange-600 hover:shadow-orange-500/40 ring-4 ring-orange-500/20'
               }`}
-              style={{
-                background: waiterComingTimer > 0
-                  ? 'linear-gradient(135deg, #10b981, #059669)'
-                  : waiterCooldown > 0
-                  ? 'linear-gradient(135deg, #6b7280, #9ca3af)'
-                  : 'linear-gradient(135deg, #f97316, #f59e0b)',
-              }}
             >
-              <BellRing className={`w-6 h-6 flex-shrink-0 ${waiterComingTimer > 0 ? 'animate-pulse' : 'animate-bounce'}`} />
-              <span className="tracking-wide">
+              <BellRing className={`w-5 h-5 flex-shrink-0 ${waiterStatus === 'COMING' || waiterStatus === 'PENDING' ? 'animate-pulse' : waiterStatus === 'OCCUPIED' ? '' : 'animate-bounce'}`} />
+              <span className="tracking-wide font-semibold">
                 {waiterLoading
-                  ? 'Calling Waiter...'
-                  : waiterComingTimer > 0
+                  ? 'Sending Call...'
+                  : waiterStatus === 'PENDING'
+                  ? 'Waiter Call Sent (Waiting...)'
+                  : waiterStatus === 'COMING'
                   ? `Waiter is coming in a few minutes (${formatTimer(waiterComingTimer)})`
-                  : waiterCooldown > 0
-                  ? `Wait (${formatTimer(waiterCooldown)})`
+                  : waiterStatus === 'OCCUPIED'
+                  ? `Waiter is occupied (${formatTimer(waiterCooldown)})`
                   : 'Call Waiter'}
               </span>
             </motion.button>

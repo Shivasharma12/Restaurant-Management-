@@ -9,7 +9,7 @@ import api from '@/lib/api';
 import { toast } from 'sonner';
 import { AnimatePresence, motion } from 'framer-motion';
 import { io, Socket } from 'socket.io-client';
-import { useWaiterStore } from '@/store/waiter.store';
+import { useWaiterStore, WaiterCall } from '@/store/waiter.store';
 
 // Play attention beep using Web Audio API
 function playAlertBeep() {
@@ -149,8 +149,13 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
         detailLabel = `Table ${payload.tableNumber} added items${payload.amount ? ` (₹${payload.amount})` : ''}${payload.itemsSummary ? `: ${payload.itemsSummary}` : ''}`;
       }
         
+      const waiterCallObj: WaiterCall = {
+        id: `${payload.tableNumber}-${Date.now()}`,
+        ...payload,
+      };
+
       toast.info(`${typeLabel}: ${detailLabel}`, {
-        duration: 8000,
+        duration: 10000,
         icon: '🔔',
       });
     });
@@ -184,7 +189,7 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
       playAlertBeep();
       toast.info(notif.title || '📢 System Announcement', {
         description: notif.message,
-        duration: 10000,
+        duration: 12000,
         icon: '📢',
       });
       queryClient.invalidateQueries({ queryKey: ['owner-notifications'] });

@@ -41,7 +41,7 @@ export function initializeSocketService(socketServer: SocketIOServer): void {
       logger.debug(`Socket ${socket.id} joined user:${targetUserId}`);
     });
 
-    // Join restaurant room (for restaurant owners)
+    // Join restaurant room (for restaurant owners & customers)
     socket.on('join:restaurant', (restaurantId: string) => {
       void socket.join(`restaurant:${restaurantId}`);
       logger.debug(`Socket ${socket.id} joined restaurant:${restaurantId}`);
@@ -57,6 +57,16 @@ export function initializeSocketService(socketServer: SocketIOServer): void {
       void socket.leave(`order:${orderId}`);
     });
 
+    // Join table room (for customer on specific table)
+    socket.on('join:table', (data: { restaurantId: string; tableNumber: string }) => {
+      const { restaurantId, tableNumber } = data;
+      if (restaurantId && tableNumber) {
+        const roomName = `table:${restaurantId}:${String(tableNumber).trim()}`;
+        void socket.join(roomName);
+        logger.debug(`Socket ${socket.id} joined ${roomName}`);
+      }
+    });
+
     // Customer calls for waiter — re-emit to restaurant owner room
     socket.on('waiter:call', (data: { restaurantId: string; tableNumber: string }) => {
       const { restaurantId, tableNumber } = data;
@@ -68,28 +78,32 @@ export function initializeSocketService(socketServer: SocketIOServer): void {
       });
     });
 
-    // Owner responds to waiter call — notify customer on table
+    // Owner responds to waiter call — notify customer on specific table ONLY
     socket.on('waiter:respond', (data: { restaurantId: string; tableNumber: string }) => {
       const { restaurantId, tableNumber } = data;
-      logger.info(`Owner sent waiter for restaurant ${restaurantId}, table ${tableNumber}`);
-      io.to(`restaurant:${restaurantId}`).emit('waiter:responded', {
-        tableNumber,
+      const cleanTable = String(tableNumber).trim();
+      logger.info(`Owner sent waiter for restaurant ${restaurantId}, table ${cleanTable}`);
+      const payload = {
+        tableNumber: cleanTable,
         restaurantId,
-        message: `Waiter is on the way to Table ${tableNumber}!`,
+        message: `Waiter is coming to Table ${cleanTable}`,
         timestamp: new Date().toISOString(),
-      });
+      };
+      io.to(`table:${restaurantId}:${cleanTable}`).emit('waiter:responded', payload);
     });
 
-    // Owner dismisses waiter call — notify customer on table
+    // Owner dismisses waiter call — notify customer on specific table ONLY
     socket.on('waiter:dismiss', (data: { restaurantId: string; tableNumber: string }) => {
       const { restaurantId, tableNumber } = data;
-      logger.info(`Owner dismissed waiter call for restaurant ${restaurantId}, table ${tableNumber}`);
-      io.to(`restaurant:${restaurantId}`).emit('waiter:dismissed', {
-        tableNumber,
+      const cleanTable = String(tableNumber).trim();
+      logger.info(`Owner dismissed waiter call for restaurant ${restaurantId}, table ${cleanTable}`);
+      const payload = {
+        tableNumber: cleanTable,
         restaurantId,
-        message: `Waiter is currently occupied. Please wait 5 minutes and try again.`,
+        message: `Waiter is occupied right now. You can try again in 30 seconds.`,
         timestamp: new Date().toISOString(),
-      });
+      };
+      io.to(`table:${restaurantId}:${cleanTable}`).emit('waiter:dismissed', payload);
     });
 
     socket.on('disconnect', () => {
@@ -157,7 +171,7 @@ export function emitWaiterResponse(restaurantId: string, tableNumber: string): v
   io.to(`restaurant:${restaurantId}`).emit('waiter:responded', {
     tableNumber,
     restaurantId,
-    message: `Waiter is on the way to Table ${tableNumber}!`,
+    message: `Waiter is coming to Table ${tableNumber}`,
     timestamp: new Date().toISOString(),
   });
 }
@@ -167,7 +181,7 @@ export function emitWaiterDismiss(restaurantId: string, tableNumber: string): vo
   io.to(`restaurant:${restaurantId}`).emit('waiter:dismissed', {
     tableNumber,
     restaurantId,
-    message: `Waiter is currently occupied. Please wait 5 minutes and try again.`,
+    message: `Waiter is occupied right now. You can try again in 30 seconds.`,
     timestamp: new Date().toISOString(),
   });
 }

@@ -10,6 +10,9 @@ class FallbackStore implements Store {
   constructor() {
     this.redisStore = new RedisStore({
       sendCommand: (...args: string[]) => {
+        if (redisClient.status !== 'ready') {
+          return Promise.reject(new Error('Redis is not ready'));
+        }
         return redisClient.call(args[0], ...args.slice(1)) as Promise<any>;
       },
     });
@@ -17,9 +20,9 @@ class FallbackStore implements Store {
   }
 
   init(options: any) {
-    if (this.redisStore.init) {
+    if (this.isRedisReady && this.redisStore.init) {
       Promise.resolve(this.redisStore.init(options)).catch((err) => {
-        logger.warn('Redis rate-limit store initialization failed. Operating with memory fallback.', err);
+        logger.warn('Redis rate-limit store initialization failed. Operating with memory fallback.');
       });
     }
     this.memoryStore.init(options);

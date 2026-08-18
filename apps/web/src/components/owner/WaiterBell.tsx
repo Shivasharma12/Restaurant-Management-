@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useWaiterStore } from '@/store/waiter.store';
-import { Bell, BellRing, DollarSign, X, Banknote, Sparkles } from 'lucide-react';
+import { Bell, BellRing, DollarSign, X, Check, Banknote, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function WaiterBell() {
@@ -146,21 +146,40 @@ export function WaiterBell() {
                               )}
                             </div>
                           </div>
-                          <button
-                            onClick={() => {
-                              const socket = useWaiterStore.getState().socket;
-                              if (socket && call.restaurantId) {
-                                socket.emit('waiter:dismiss', {
-                                  restaurantId: call.restaurantId,
-                                  tableNumber: call.tableNumber,
-                                });
-                              }
-                              removeWaiterCall(call.id);
-                            }}
-                            className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 ml-1"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+                            <button
+                              onClick={() => {
+                                const socket = useWaiterStore.getState().socket;
+                                if (socket && call.restaurantId) {
+                                  socket.emit('waiter:respond', {
+                                    restaurantId: call.restaurantId,
+                                    tableNumber: call.tableNumber,
+                                  });
+                                }
+                                removeWaiterCall(call.id);
+                              }}
+                              className="p-1 rounded-lg bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors"
+                              title="Send Waiter"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const socket = useWaiterStore.getState().socket;
+                                if (socket && call.restaurantId) {
+                                  socket.emit('waiter:dismiss', {
+                                    restaurantId: call.restaurantId,
+                                    tableNumber: call.tableNumber,
+                                  });
+                                }
+                                removeWaiterCall(call.id);
+                              }}
+                              className="p-1 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                              title="Dismiss Call"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </motion.div>
                       );
                     })}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2,
   Clock,
@@ -24,7 +24,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { InvoiceDownload } from './InvoiceDownload';
-import { AnimatePresence, motion } from 'framer-motion';
 
 // ─── Tracking Step Definitions ────────────────────────────────────────────────
 
