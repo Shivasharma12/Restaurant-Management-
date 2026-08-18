@@ -849,76 +849,11 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
               ))}
             </div>
 
-            <AnimatePresence>
-              {selectedPayment === 'RAZORPAY' && !!(restaurant?.paymentQrCode || restaurant?.paymentUpiId || restaurant?.paymentPhone || restaurant?.bankAccountNumber) && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-3 pl-3 border-l-2 border-primary/30 space-y-2 overflow-hidden"
-                >
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">
-                    Select Online Payment Option:
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setOnlinePaymentType('DIRECT')}
-                      className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all relative ${
-                        onlinePaymentType === 'DIRECT'
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                          : 'border-border hover:bg-muted/40'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        onlinePaymentType === 'DIRECT' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        <User className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-xs text-foreground font-display">Pay Direct to Owner</p>
-                        <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">Use Owner QR, UPI, or Bank</p>
-                      </div>
-                      {onlinePaymentType === 'DIRECT' && (
-                        <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setOnlinePaymentType('RAZORPAY')}
-                      className={`flex items-start gap-2.5 p-3 rounded-xl border text-left transition-all relative ${
-                        onlinePaymentType === 'RAZORPAY'
-                          ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                          : 'border-border hover:bg-muted/40'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        onlinePaymentType === 'RAZORPAY' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
-                      }`}>
-                        <CreditCard className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="font-semibold text-xs text-foreground font-display">Pay using Razorpay</p>
-                          <span className="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full uppercase tracking-wider">
-                            Coming Soon
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground leading-normal mt-0.5">Standard online instant payment (Coming Soon)</p>
-                      </div>
-                      {onlinePaymentType === 'RAZORPAY' && (
-                        <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-primary" />
-                      )}
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Direct Payment sub-options removed to directly present owner QR & bank details */}
           </div>
         )}
 
-        {selectedPayment === 'RAZORPAY' && onlinePaymentType === 'DIRECT' && (restaurant?.paymentQrCode || restaurant?.paymentUpiId || restaurant?.paymentPhone || restaurant?.bankAccountNumber) && (
+        {selectedPayment === 'RAZORPAY' && (restaurant?.paymentQrCode || restaurant?.paymentUpiId || restaurant?.paymentPhone || restaurant?.bankAccountNumber) ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1050,17 +985,19 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
         )}
 
         {/* Guest or user form or login required prompt */}
-        {selectedPayment === 'RAZORPAY' && onlinePaymentType === 'RAZORPAY' ? (
-          <div className="bg-card border border-amber-500/20 rounded-2xl p-6 text-center space-y-3 shadow-sm relative overflow-hidden">
-            <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto text-amber-500 text-xl font-bold">
-              💳
+        {selectedPayment === 'RAZORPAY' && !(restaurant?.paymentQrCode || restaurant?.paymentUpiId || restaurant?.paymentPhone || restaurant?.bankAccountNumber) && (
+          <div className="bg-card border border-border rounded-2xl p-4 space-y-2 shadow-sm">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-4 h-4 text-primary" />
+              <h3 className="font-display font-semibold text-xs text-foreground">Online Payment Requested</h3>
             </div>
-            <h3 className="font-display font-bold text-base text-foreground">Razorpay Online Payment Coming Soon</h3>
-            <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
-              Razorpay payment gateway integration is coming soon. Please select <strong>Pay Direct to Owner</strong>, <strong>Pay on Counter</strong>, or <strong>Pay to Waiter</strong> to complete your order.
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Please enter your details below to place your order. You can settle the payment with the restaurant owner upon order confirmation.
             </p>
           </div>
-        ) : diningOption === 'DELIVERY' && !activeUser ? (
+        )}
+
+        {diningOption === 'DELIVERY' && !activeUser ? (
           <div className="bg-card border border-border rounded-2xl p-6 text-center space-y-4 shadow-xl relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-transparent pointer-events-none" />
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto text-primary text-2xl">
