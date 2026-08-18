@@ -105,12 +105,16 @@ Your job is to help customers with their dining decisions.
 You have access to this restaurant's full menu:
 ${params.menuContext}
 
+CRITICAL DIETARY CLASSIFICATION RULES:
+- Items marked as "Non-Veg" contain chicken, mutton, meat, fish, or seafood and are STRICTLY NON-VEGETARIAN. NEVER classify or refer to a Non-Veg item as vegetarian under any circumstances.
+- Items marked as "Veg" are Vegetarian (contain no meat/chicken/fish).
+- Items marked as "Vegan" contain no meat, dairy, eggs, or animal products.
+
 Guidelines:
-- Answer questions about menu items, ingredients, allergens, spice levels, and combinations.
+- Answer questions about menu items, ingredients, allergens, spice levels, and combinations accurately according to their Veg / Non-Veg classification.
 - Suggest dishes based on customer preferences, budget, or dietary requirements.
 - Be warm, concise, and enthusiastic about the food.
 - If asked about items not on the menu, politely say they're not available.
-- If asked off-topic questions (unrelated to food/dining), politely decline and redirect.
 - Keep responses under 150 words.
 - Use ₹ for prices.`;
 
@@ -155,19 +159,23 @@ function getRuleBasedChatResponse(params: {
 }): string {
   const message = params.userMessage.toLowerCase();
   
-  // 1. Parse menu context
+  // 1. Parse menu context correctly
   const parsedItems: ParsedMenuItem[] = [];
   const lines = params.menuContext.split('\n');
   for (const line of lines) {
     const match = line.match(/^-\s*(.*?)\s*\|\s*(.*?)\s*\|\s*₹?\s*(\d+)\s*\|\s*([a-zA-Z-\/]+)/i);
     if (match) {
       const [, name, category, priceStr, vegStr] = match;
+      const rawVeg = vegStr.toLowerCase().trim();
+      const isNonVeg = rawVeg.includes('non-veg') || rawVeg.includes('nonveg') || rawVeg.includes('non veg');
+      const isVeg = !isNonVeg && rawVeg.includes('veg');
+      const isVegan = rawVeg.includes('vegan');
       parsedItems.push({
         name: name.trim(),
         category: category.trim(),
         price: parseInt(priceStr, 10),
-        isVeg: vegStr.toLowerCase().includes('veg'),
-        isVegan: vegStr.toLowerCase().includes('vegan'),
+        isVeg,
+        isVegan,
       });
     }
   }
@@ -196,14 +204,14 @@ function getRuleBasedChatResponse(params: {
     const cheapOptions = [...parsedItems].sort((a, b) => a.price - b.price).slice(0, 3);
     if (cheapOptions.length > 0) {
       return `Here are some of our most affordable options:\n` +
-        cheapOptions.map(item => `- **${item.name}** - ₹${item.price} (${item.category})`).join('\n');
+        cheapOptions.map(item => `- **${item.name}** - ₹${item.price} (${item.category}) [${item.isVeg ? 'Veg' : 'Non-Veg'}]`).join('\n');
     }
   }
 
   // 4. Handle dietary restriction queries
   const wantsVegan = message.includes('vegan');
-  const wantsVeg = message.includes('veg') || message.includes('vegetarian');
-  const wantsNonVeg = message.includes('non-veg') || message.includes('non veg') || message.includes('meat') || message.includes('chicken');
+  const wantsNonVeg = message.includes('non-veg') || message.includes('non veg') || message.includes('nonveg') || message.includes('meat') || message.includes('chicken') || message.includes('mutton') || message.includes('fish') || message.includes('egg');
+  const wantsVeg = !wantsNonVeg && !wantsVegan && (message.includes('vegetarian') || /\bveg\b/i.test(message) || message.includes('veg '));
 
   if (wantsVegan) {
     const veganItems = parsedItems.filter(item => item.isVegan).slice(0, 5);
@@ -214,6 +222,15 @@ function getRuleBasedChatResponse(params: {
     return `We do not have items explicitly marked as Vegan, but many of our vegetarian dishes can be prepared vegan. Please ask our staff when ordering!`;
   }
 
+  if (wantsNonVeg) {
+    const nonVegItems = parsedItems.filter(item => !item.isVeg).slice(0, 5);
+    if (nonVegItems.length > 0) {
+      return `Here are our non-vegetarian options:\n` +
+        nonVegItems.map(item => `- **${item.name}** (${item.category}) - ₹${item.price}`).join('\n');
+    }
+    return `We don't have non-vegetarian items on the menu at the moment.`;
+  }
+
   if (wantsVeg) {
     const vegItems = parsedItems.filter(item => item.isVeg).slice(0, 5);
     if (vegItems.length > 0) {
@@ -221,14 +238,6 @@ function getRuleBasedChatResponse(params: {
         vegItems.map(item => `- **${item.name}** (${item.category}) - ₹${item.price}`).join('\n');
     }
     return `We don't have vegetarian items on the menu at the moment.`;
-  }
-
-  if (wantsNonVeg) {
-    const nonVegItems = parsedItems.filter(item => !item.isVeg).slice(0, 5);
-    if (nonVegItems.length > 0) {
-      return `Here are our non-vegetarian options:\n` +
-        nonVegItems.map(item => `- **${item.name}** (${item.category}) - ₹${item.price}`).join('\n');
-    }
   }
 
   // 5. Handle category queries
@@ -244,7 +253,7 @@ function getRuleBasedChatResponse(params: {
   // 6. Handle specific item queries
   for (const item of parsedItems) {
     if (message.includes(item.name.toLowerCase())) {
-      return `Yes, we serve **${item.name}**! It belongs to the **${item.category}** category, costs ₹${item.price}, and is a ${item.isVeg ? 'vegetarian' : 'non-vegetarian'} dish. Would you like to add it to your order?`;
+      return `Yes, we serve **${item.name}**! It belongs to the **${item.category}** category, costs ₹${item.price}, and is a ${item.isVeg ? 'vegetarian 🥗' : 'non-vegetarian 🍗'} dish. Would you like to add it to your order?`;
     }
   }
 
