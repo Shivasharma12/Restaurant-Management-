@@ -853,7 +853,7 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
           </div>
         )}
 
-        {selectedPayment === 'RAZORPAY' && (restaurant?.paymentQrCode || restaurant?.paymentUpiId || restaurant?.paymentPhone || restaurant?.bankAccountNumber) ? (
+        {selectedPayment === 'RAZORPAY' && (restaurant?.paymentQrCode || restaurant?.paymentUpiId || restaurant?.paymentPhone || restaurant?.bankAccountNumber) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
