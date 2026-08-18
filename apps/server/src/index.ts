@@ -28,39 +28,10 @@ process.on('uncaughtException', (error: any) => {
 });
 
 const PORT = parseInt(process.env.PORT ?? '4000', 10);
+const HOST = '0.0.0.0';
 
 async function bootstrap() {
   try {
-    // Test DB connection with retry loop
-    let dbConnected = false;
-    const isDev = process.env.NODE_ENV !== 'production';
-    let retries = isDev ? 100 : 5; // Retry up to 100 times (~3.3 minutes) in dev to allow postgres container to boot
-    while (retries > 0 && !dbConnected) {
-      try {
-        await prisma.$connect();
-        dbConnected = true;
-        logger.info('✅ Database connected');
-        // Auto-ensure default live credentials & demo restaurant exist
-        await ensureDatabaseSeeded();
-      } catch (err) {
-        retries--;
-        if (retries === 0) {
-          logger.error('❌ Database connection failed after maximum retries.');
-          throw err;
-        }
-        logger.warn(`⚠️ Database connection failed. Retrying in 2 seconds... (${retries} retries remaining)`);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-    }
-
-    // Connect Redis
-    await connectRedis();
-    if (isRedisReady()) {
-      logger.info('✅ Redis connected');
-    } else {
-      logger.warn('⚠️ Redis connection failed. Operating with in-memory fallback cache and rate limiter.');
-    }
-
     // Create HTTP server
     const httpServer = createServer(app);
 
@@ -91,11 +62,16 @@ async function bootstrap() {
     initializeSocketService(io);
     logger.info('✅ Socket.io initialized');
 
-    // Start server
-    httpServer.listen(PORT, () => {
-      logger.info(`🚀 Server running on http://localhost:${PORT}`);
-      logger.info(`📚 API docs: http://localhost:${PORT}/api-docs`);
+    // Start server immediately on 0.0.0.0 so Render's port scanner passes instantly
+    httpServer.listen(PORT, HOST, () => {
+      logger.info(`🚀 Server running on http://${HOST}:${PORT}`);
+      logger.info(`📚 API docs: http://${HOST}:${PORT}/api-docs`);
       logger.info(`🌍 Environment: ${process.env.NODE_ENV ?? 'development'}`);
+    });
+
+    // Initialize database & redis in parallel after server is already listening
+    initializeBackgroundServices().catch((err) => {
+      logger.error('Error during background services initialization:', err);
     });
 
     // Graceful shutdown
@@ -116,5 +92,38 @@ async function bootstrap() {
   }
 }
 
-bootstrap(); // Trigger reload
+async function initializeBackgroundServices() {
+  // Test DB connection with retry loop
+  let dbConnected = false;
+  const isDev = process.env.NODE_ENV !== 'production';
+  let retries = isDev ? 100 : 5; // Retry up to 100 times in dev to allow postgres container to boot
+  while (retries > 0 && !dbConnected) {
+    try {
+      await prisma.$connect();
+      dbConnected = true;
+      logger.info('✅ Database connected');
+      // Auto-ensure default live credentials & demo restaurant exist
+      await ensureDatabaseSeeded();
+    } catch (err) {
+      retries--;
+      if (retries === 0) {
+        logger.error('❌ Database connection failed after maximum retries.');
+        break;
+      }
+      logger.warn(`⚠️ Database connection failed. Retrying in 2 seconds... (${retries} retries remaining)`);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+
+  // Connect Redis
+  await connectRedis();
+  if (isRedisReady()) {
+    logger.info('✅ Redis connected');
+  } else {
+    logger.warn('⚠️ Redis connection failed. Operating with in-memory fallback cache and rate limiter.');
+  }
+}
+
+bootstrap();
+
 
