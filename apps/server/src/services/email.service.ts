@@ -7,16 +7,20 @@ function getTransporter() {
   const user = (process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'shivabhardwaj4545@gmail.com').trim();
   const pass = (process.env.SMTP_PASS ?? '').replace(/\s+/g, '').trim();
 
+  const isGmail = host.toLowerCase().includes('gmail');
+
+  if (isGmail) {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user, pass },
+      tls: { rejectUnauthorized: false },
+    });
+  }
+
   return nodemailer.createTransport({
     host,
     port,
     secure: port === 465,
-    pool: true,
-    maxConnections: 3,
-    maxMessages: 100,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000,
     auth: { user, pass },
     tls: { rejectUnauthorized: false },
   });
@@ -44,8 +48,28 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
     });
     logger.info(`✅ Email sent to ${cleanedTo}: ${subject} (Message ID: ${info.messageId})`);
   } catch (error: any) {
-    logger.error(`❌ Failed to send email to ${cleanedTo}:`, error.message || error);
-    throw new Error(`Email delivery failed: ${error.message || 'SMTP error'}`);
+    logger.warn(`⚠️ Primary email dispatch to ${cleanedTo} encountered an error: ${error.message || error}. Trying SSL port 465 fallback...`);
+    try {
+      const user = (process.env.SMTP_USER || process.env.SMTP_FROM_EMAIL || 'shivabhardwaj4545@gmail.com').trim();
+      const pass = (process.env.SMTP_PASS ?? '').replace(/\s+/g, '').trim();
+      const fallbackTransporter = nodemailer.createTransport({
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
+        auth: { user, pass },
+        tls: { rejectUnauthorized: false },
+      });
+      const info = await fallbackTransporter.sendMail({
+        from: getFromAddress(),
+        to: cleanedTo,
+        subject,
+        html,
+      });
+      logger.info(`✅ Fallback SSL email sent successfully to ${cleanedTo}: ${subject} (Message ID: ${info.messageId})`);
+    } catch (fallbackError: any) {
+      logger.error(`❌ All email dispatch attempts failed for ${cleanedTo}:`, fallbackError.message || fallbackError);
+      throw new Error(`Email delivery failed: ${error.message || 'SMTP error'}`);
+    }
   }
 }
 

@@ -7,7 +7,7 @@ import {
   Store, Search, CheckCircle2, XCircle, Clock, Filter,
   LayoutDashboard, Users, BarChart3, Settings, LogOut,
   Menu, Shield, ChevronRight, Eye, AlertTriangle, RefreshCw,
-  Plus, X, Loader2, CreditCard, Ticket, HandCoins, Star
+  Plus, X, Loader2, CreditCard, Ticket, HandCoins, Star, Trash2
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import api from '@/lib/api';
@@ -149,6 +149,19 @@ export function AdminRestaurantsPage() {
       qc.invalidateQueries({ queryKey: ['admin-restaurants'] });
     },
     onError: () => toast.error('Action failed to update status'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/admin/restaurants/${id}`);
+    },
+    onSuccess: () => {
+      toast.success('Restaurant deleted successfully');
+      qc.invalidateQueries({ queryKey: ['admin-restaurants'] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to delete restaurant');
+    },
   });
 
   const handleLogout = async () => {
@@ -339,6 +352,19 @@ export function AdminRestaurantsPage() {
                                     title={r.isSuspended ? "Reactivate" : "Suspend"}
                                   >
                                     {r.isSuspended ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                                  </button>
+                                )}
+                                {r.isSuspended && (
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete "${r.name}"? This action will remove the restaurant.`)) {
+                                        deleteMutation.mutate(r.id);
+                                      }
+                                    }}
+                                    className="p-1.5 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    title="Delete Restaurant"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
                                 <Link

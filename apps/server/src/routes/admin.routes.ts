@@ -6,6 +6,7 @@ import {
   approveRestaurant,
   suspendRestaurant,
   createRestaurant,
+  deleteRestaurant,
   getAllUsers,
   suspendUser,
   getGlobalAnalytics,
@@ -31,6 +32,7 @@ router.get('/restaurants', getAllRestaurants);
 router.post('/restaurants', createRestaurant);
 router.patch('/restaurants/:id/approve', approveRestaurant);
 router.patch('/restaurants/:id/suspend', suspendRestaurant);
+router.delete('/restaurants/:id', deleteRestaurant);
 
 // User management
 router.get('/users', getAllUsers);

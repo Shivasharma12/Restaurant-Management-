@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { AppError } from '../utils/AppError';
-import { cacheGet, cacheSet } from '../services/redis.service';
+import { cacheGet, cacheSet, cacheDelPattern } from '../services/redis.service';
 import { emitNotification } from '../services/socket.service';
 import {
   sendBroadcastEmail,
@@ -412,6 +412,36 @@ export async function createRestaurant(req: AuthenticatedRequest, res: Response,
       success: true,
       data: { restaurant },
       message: 'Restaurant created successfully and notification email sent to owner!',
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteRestaurant(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const id = req.params.id as string;
+    const restaurant = await prisma.restaurant.findFirst({
+      where: { id, deletedAt: null },
+    });
+    if (!restaurant) {
+      throw new AppError('Restaurant not found.', 404, 'RESTAURANT_NOT_FOUND');
+    }
+
+    await prisma.restaurant.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        isApproved: false,
+        isSuspended: true,
+      },
+    });
+
+    await cacheDelPattern(`menu:${restaurant.slug}*`);
+
+    res.json({
+      success: true,
+      message: `Restaurant "${restaurant.name}" deleted successfully.`,
     });
   } catch (error) {
     next(error);
