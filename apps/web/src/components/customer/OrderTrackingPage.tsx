@@ -27,6 +27,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { InvoiceDownload } from './InvoiceDownload';
+import { useCartStore } from '@/store/cart.store';
 
 // ─── Tracking Step Definitions ────────────────────────────────────────────────
 
@@ -164,6 +165,43 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
     if (!order) return;
     sessionStorage.setItem('qr_restaurant_addon_order_id', orderId);
     sessionStorage.setItem('qr_restaurant_addon_order_num', order.id.slice(-8).toUpperCase());
+    router.push(`/r/${restaurantSlug}`);
+  };
+
+  const handleReorder = () => {
+    if (!order || !order.items || order.items.length === 0) {
+      toast.error('No items found in this order to reorder.');
+      return;
+    }
+    const { addItem, setRestaurant } = useCartStore.getState();
+    if (restaurantSlug && order.restaurantId) {
+      setRestaurant(restaurantSlug, order.restaurantId);
+    }
+    for (const item of order.items) {
+      const anyItem = item as any;
+      const menuItemId = anyItem.menuItemId || item.id;
+      const name = anyItem.name || anyItem.menuItem?.name || 'Item';
+      const image = anyItem.image || anyItem.menuItem?.image || null;
+      const isVeg = anyItem.isVeg ?? anyItem.menuItem?.isVeg ?? true;
+      const variantId = anyItem.variantId || null;
+      const variantName = anyItem.variantName || anyItem.variant?.name || null;
+      const unitPrice = item.unitPrice || anyItem.price || 0;
+      const addOns = anyItem.addOns || [];
+      const quantity = item.quantity || 1;
+
+      addItem({
+        menuItemId,
+        name,
+        image,
+        isVeg,
+        variantId,
+        variantName,
+        unitPrice,
+        addOns,
+        quantity,
+      });
+    }
+    toast.success('Items added to cart!');
     router.push(`/r/${restaurantSlug}`);
   };
 
@@ -764,15 +802,14 @@ export function OrderTrackingPage({ orderId, restaurantSlug }: OrderTrackingPage
             >
               Back to Menu
             </Link>
-            {isCompleted && (
-              <button
-                className="flex-1 py-3 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2"
-                style={{ backgroundColor: themeColor }}
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reorder
-              </button>
-            )}
+            <button
+              onClick={handleReorder}
+              className="flex-1 py-3 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md"
+              style={{ backgroundColor: themeColor }}
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reorder
+            </button>
           </div>
           {['CONFIRMED', 'PREPARING', 'BAKING', 'READY', 'ON_THE_WAY', 'DELIVERED'].includes(currentStatus) && (
             <InvoiceDownload order={order} themeColor={themeColor} />

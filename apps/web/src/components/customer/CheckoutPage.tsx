@@ -40,8 +40,8 @@ interface RazorpayOptions {
 }
 
 const guestSchema = z.object({
-  guestName: z.string().min(2, 'Name required'),
-  guestPhone: z.string().regex(/^[6-9]\d{9}$/, 'Enter valid 10-digit number'),
+  guestName: z.string().optional().or(z.literal('')),
+  guestPhone: z.string().optional().or(z.literal('')),
   paymentMethod: z.enum(['RAZORPAY', 'COD', 'PAY_TO_WAITER']),
 });
 
@@ -451,8 +451,8 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
     try {
       const token = tableToken || localStorage.getItem(`table_token_${restaurantSlug}`) || '';
       const response = await api.post('/orders/guest', {
-        guestName: formData.guestName,
-        guestPhone: formData.guestPhone,
+        guestName: formData.guestName?.trim() || 'Guest',
+        guestPhone: formData.guestPhone?.trim() || '',
         tableNumber: manualTableNumber || undefined,
         tableToken: token,
         paymentMethod: selectedPayment,
@@ -472,7 +472,7 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
       };
 
       if (selectedPayment === 'RAZORPAY' && order.razorpayOrderId && onlinePaymentType === 'RAZORPAY') {
-        await handleRazorpayPayment(order.id, order.razorpayOrderId, order.total, formData.guestName, formData.guestPhone);
+        await handleRazorpayPayment(order.id, order.razorpayOrderId, order.total, formData.guestName || 'Guest', formData.guestPhone || '');
       } else {
         saveOrderToRecent(order.id, restaurantSlug);
         clearCart();
@@ -1120,31 +1120,29 @@ export function CheckoutPage({ restaurantSlug, tableNumber, tableToken }: Checko
             <h2 className="font-display font-semibold">Your Details</h2>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Full Name</label>
+              <label className="text-sm font-medium mb-1.5 block">Full Name <span className="text-muted-foreground text-xs font-normal">(Optional)</span></label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   {...register('guestName')}
-                  placeholder="John Doe"
+                  placeholder="John Doe (Optional)"
                   className="w-full pl-9 pr-4 py-3 bg-muted rounded-xl text-sm border-0 focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                 />
               </div>
-              {errors.guestName && <p className="text-red-500 text-xs mt-1">{errors.guestName.message}</p>}
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Phone Number</label>
+              <label className="text-sm font-medium mb-1.5 block">Phone Number <span className="text-muted-foreground text-xs font-normal">(Optional)</span></label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   {...register('guestPhone')}
-                  placeholder="9876543210"
+                  placeholder="9876543210 (Optional)"
                   type="tel"
                   maxLength={10}
                   className="w-full pl-9 pr-4 py-3 bg-muted rounded-xl text-sm border-0 focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground"
                 />
               </div>
-              {errors.guestPhone && <p className="text-red-500 text-xs mt-1">{errors.guestPhone.message}</p>}
             </div>
 
             {diningOption === 'DINE_IN' && (

@@ -484,27 +484,49 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
   }, [clearWaiterTimers]);
 
   const handleCallWaiter = useCallback(async (tableNum?: string) => {
-    const effectiveTable = tableNum ?? tableNumber ?? manualTableNumber ?? (typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null);
-    if (!effectiveTable || waiterStatus !== 'IDLE' || waiterLoading) return;
+    const storedTable = typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null;
+    const effectiveTable = tableNum || tableNumber || manualTableNumber || storedTable;
+
+    if (!effectiveTable || !String(effectiveTable).trim()) {
+      setShowTableInput(true);
+      return;
+    }
+
+    if (waiterStatus !== 'IDLE') {
+      const cleanT = String(effectiveTable).trim();
+      if (waiterStatus === 'PENDING') {
+        toast.info(`Waiter call is already pending for Table ${cleanT}. Please wait a moment.`);
+      } else if (waiterStatus === 'COMING') {
+        toast.info(`Waiter is on their way to Table ${cleanT}!`);
+      } else if (waiterStatus === 'OCCUPIED') {
+        toast.info(`Waiter is currently occupied. You can try again in a few seconds.`);
+      }
+      return;
+    }
+
+    if (waiterLoading) return;
+
     setWaiterLoading(true);
     try {
+      const cleanTable = String(effectiveTable).trim();
       const token = searchParams?.token || localStorage.getItem(`table_token_${slug}`) || '';
-      await api.post(`/menu/${slug}/call-waiter`, { tableNumber: effectiveTable, tableToken: token });
+      await api.post(`/menu/${slug}/call-waiter`, { tableNumber: cleanTable, tableToken: token });
 
       if (typeof window !== 'undefined') {
-        localStorage.setItem(`table_num_${slug}`, String(effectiveTable).trim());
+        localStorage.setItem(`table_num_${slug}`, cleanTable);
       }
-      setManualTableNumber(String(effectiveTable).trim());
+      setManualTableNumber(cleanTable);
 
-      toast.success(`🙋 Waiter has been called for Table ${effectiveTable}!`, {
+      toast.success(`🙋 Waiter has been called for Table ${cleanTable}!`, {
         description: 'Please wait, someone will be with you shortly.',
-        duration: 4000,
+        duration: 5000,
       });
 
       setShowTableInput(false);
-      startPendingState(effectiveTable);
-    } catch {
-      toast.error('Could not call waiter. Please try again.');
+      startPendingState(cleanTable);
+    } catch (err: any) {
+      const errMsg = err.response?.data?.error || err.response?.data?.message || 'Could not call waiter. Please try again.';
+      toast.error(errMsg);
     } finally {
       setWaiterLoading(false);
     }
@@ -846,10 +868,12 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
               whileHover={{ scale: waiterStatus !== 'IDLE' ? 1 : 1.05 }}
               whileTap={{ scale: waiterStatus !== 'IDLE' ? 1 : 0.95 }}
               onClick={() => {
-                if (tableNumber || manualTableNumber || (typeof window !== 'undefined' && localStorage.getItem(`table_num_${slug}`))) {
-                  handleCallWaiter();
+                const stored = typeof window !== 'undefined' ? localStorage.getItem(`table_num_${slug}`) : null;
+                const existingTable = tableNumber || manualTableNumber || stored;
+                if (existingTable && String(existingTable).trim()) {
+                  handleCallWaiter(String(existingTable).trim());
                 } else {
-                  setShowTableInput((v) => !v);
+                  setShowTableInput(true);
                 }
               }}
               disabled={waiterStatus !== 'IDLE' || waiterLoading}
@@ -1247,56 +1271,67 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
         )}
       </AnimatePresence>
 
-      {/* Call Waiter — table input popup (opens LEFT of FAB column to avoid edge clipping) */}
+      {/* Call Waiter — Table Input Modal */}
       <AnimatePresence>
-        {showTableInput && !tableNumber && (
-          <>
-            <div
-              className="fixed inset-0 z-30"
-              onClick={() => { setShowTableInput(false); setManualTableNumber(''); }}
-            />
+        {showTableInput && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 8 }}
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 8 }}
-              transition={{ duration: 0.15 }}
-              className="fixed z-40 bg-card border border-border rounded-2xl shadow-2xl p-4"
-              style={{ bottom: '5.5rem', right: '4.5rem', width: '220px' }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-card border border-border rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 relative text-foreground"
             >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1.5">
-                  <BellRing className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                  <span className="text-sm font-semibold">Call Waiter</span>
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-500 font-bold">
+                    <BellRing className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-base text-foreground">Call Waiter</h3>
+                    <p className="text-[11px] text-muted-foreground">Request assistance for your table</p>
+                  </div>
                 </div>
                 <button
-                  onClick={() => { setShowTableInput(false); setManualTableNumber(''); }}
-                  className="p-1 rounded-lg hover:bg-muted text-muted-foreground"
+                  onClick={() => setShowTableInput(false)}
+                  className="p-2 rounded-full bg-muted hover:bg-muted-foreground/20 text-muted-foreground transition-colors"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground mb-2">Enter your table number</p>
-              <input
-                type="number"
-                inputMode="numeric"
-                placeholder="e.g. 4"
-                value={manualTableNumber}
-                onChange={(e) => setManualTableNumber(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && manualTableNumber.trim() && handleCallWaiter(manualTableNumber.trim())}
-                className="w-full px-3 py-2 bg-muted rounded-xl text-sm border-0 focus:outline-none focus:ring-2 focus:ring-orange-500/30 mb-2"
-                autoFocus
-              />
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-muted-foreground block">Table Number</label>
+                <input
+                  type="text"
+                  placeholder="Enter Table Number (e.g. 5, Table 2)"
+                  value={manualTableNumber}
+                  onChange={(e) => setManualTableNumber(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && manualTableNumber.trim()) {
+                      handleCallWaiter(manualTableNumber.trim());
+                    }
+                  }}
+                  className="w-full px-4 py-3 bg-muted border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 text-foreground font-semibold"
+                  autoFocus
+                />
+              </div>
+
               <button
-                onClick={() => manualTableNumber.trim() && handleCallWaiter(manualTableNumber.trim())}
+                onClick={() => {
+                  if (!manualTableNumber.trim()) {
+                    toast.error('Please enter your table number');
+                    return;
+                  }
+                  handleCallWaiter(manualTableNumber.trim());
+                }}
                 disabled={!manualTableNumber.trim() || waiterLoading}
-                className="w-full py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
-                style={{ background: 'linear-gradient(135deg, #f97316, #f59e0b)' }}
+                className="w-full py-3.5 rounded-xl text-white font-bold text-sm bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20 active:scale-95"
               >
-                <BellRing className="w-3.5 h-3.5" />
-                {waiterLoading ? 'Calling...' : 'Call Waiter'}
+                <BellRing className="w-4 h-4" />
+                {waiterLoading ? 'Sending Call...' : 'Confirm & Call Waiter'}
               </button>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
 

@@ -179,8 +179,8 @@ export async function placeGuestOrder(
       const newOrder = await tx.order.create({
         data: {
           restaurantId: restaurant.id,
-          guestName,
-          guestPhone,
+          guestName: guestName?.trim() || 'Guest',
+          guestPhone: guestPhone?.trim() || null,
           tableNumber,
           status: 'PENDING',
           paymentMethod,

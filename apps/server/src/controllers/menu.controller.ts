@@ -5,6 +5,7 @@ import { cacheGet, cacheSet } from '../services/redis.service';
 import { emitWaiterCall } from '../services/socket.service';
 import { ensureDatabaseSeeded } from '../utils/autoSeed';
 import { verifyTableSignature } from '../utils/tableSignature';
+import { logger } from '../utils/logger';
 
 // Public: list of approved restaurants (for demo/landing page)
 export async function getPublicRestaurants(
@@ -199,6 +200,16 @@ export async function callWaiter(
 
     // Emit real-time waiter call to the restaurant owner's socket room
     emitWaiterCall(restaurant.id, tableNumber.trim());
+
+    // Create persistent notification in database so restaurant owner sees it in dashboard
+    await prisma.notification.create({
+      data: {
+        restaurantId: restaurant.id,
+        type: 'WAITER_CALL',
+        title: `🔔 Waiter Call - Table ${tableNumber.trim()}`,
+        message: `Customer at Table ${tableNumber.trim()} is requesting assistance.`,
+      },
+    }).catch((err) => logger.warn('Failed to create waiter call notification in DB:', err));
 
     res.json({
       success: true,
