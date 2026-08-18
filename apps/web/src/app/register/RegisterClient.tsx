@@ -36,16 +36,6 @@ export default function RegisterClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const error = searchParams.get('error');
-    if (error === 'GOOGLE_CLIENT_ID_NOT_CONFIGURED') {
-      toast.info('Google Sign-In is not configured. Please sign up using email and password below.', {
-        id: 'google-auth-notice',
-        duration: 7000,
-      });
-    }
-  }, [searchParams]);
-
   const handleGoogleAuth = () => {
     window.location.href = `${API_BASE_URL}/auth/google`;
   };

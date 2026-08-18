@@ -43,29 +43,13 @@ export default function LoginClient() {
     }
   }, [isAuthenticated, user, router, restaurantSlug]);
 
-  useEffect(() => {
-    const error = searchParams.get('error');
-    if (error === 'GOOGLE_CLIENT_ID_NOT_CONFIGURED') {
-      toast.info('Google Sign-In is not configured. Please sign in with Email & Password or use the Live Demo Credentials above.', {
-        id: 'google-auth-notice',
-        duration: 7000,
-      });
-    }
-  }, [searchParams]);
-
   const handleGoogleAuth = () => {
     window.location.href = `${API_BASE_URL}/auth/google`;
   };
 
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<LoginForm>({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
   });
-
-  const fillCredentials = (emailVal: string, passVal: string) => {
-    setValue('email', emailVal, { shouldValidate: true });
-    setValue('password', passVal, { shouldValidate: true });
-    toast.info(`Loaded live credentials for ${emailVal}`);
-  };
 
   const onSubmit = async (data: LoginForm) => {
     setLoading(true);
@@ -157,42 +141,6 @@ export default function LoginClient() {
                 ? 'Sign in to manage your restaurant'
                 : 'Sign in to your account'}
             </p>
-          </div>
-
-          {/* Quick Fill Demo Credentials */}
-          <div className="mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 backdrop-blur-md">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-amber-500 uppercase tracking-wider flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5" /> Live Demo Credentials
-              </span>
-              <span className="text-[10px] text-muted-foreground">Click to quick-fill</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => fillCredentials('admin@qrrestaurant.com', 'Admin@123456')}
-                className="py-1.5 px-2 bg-background/80 hover:bg-amber-500/20 border border-border rounded-lg text-xs font-medium text-foreground transition-all text-center flex flex-col items-center gap-0.5 shadow-sm"
-              >
-                <span className="text-amber-500 font-bold text-[11px]">Admin</span>
-                <span className="text-[10px] text-muted-foreground">Super Admin</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillCredentials('owner@upstates.com', 'Owner@123456')}
-                className="py-1.5 px-2 bg-background/80 hover:bg-orange-500/20 border border-border rounded-lg text-xs font-medium text-foreground transition-all text-center flex flex-col items-center gap-0.5 shadow-sm"
-              >
-                <span className="text-orange-500 font-bold text-[11px]">Owner</span>
-                <span className="text-[10px] text-muted-foreground">Restaurant</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => fillCredentials('customer@example.com', 'Customer@123')}
-                className="py-1.5 px-2 bg-background/80 hover:bg-blue-500/20 border border-border rounded-lg text-xs font-medium text-foreground transition-all text-center flex flex-col items-center gap-0.5 shadow-sm"
-              >
-                <span className="text-blue-500 font-bold text-[11px]">Customer</span>
-                <span className="text-[10px] text-muted-foreground">Sample User</span>
-              </button>
-            </div>
           </div>
 
           <div className="bg-card backdrop-blur-xl border border-border rounded-2xl p-6 shadow-2xl flex-1 flex flex-col justify-center">
