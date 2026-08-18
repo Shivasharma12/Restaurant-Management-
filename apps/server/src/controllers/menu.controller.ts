@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { AppError } from '../utils/AppError';
 import { cacheGet, cacheSet } from '../services/redis.service';
 import { emitWaiterCall } from '../services/socket.service';
+import { ensureDatabaseSeeded } from '../utils/autoSeed';
 import { verifyTableSignature } from '../utils/tableSignature';
 
 // Public: list of approved restaurants (for demo/landing page)
@@ -73,11 +74,66 @@ export async function getRestaurantMenu(
     });
 
     if (!restaurant) {
-      throw new AppError(
-        'Restaurant not found or not yet approved.',
-        404,
-        'RESTAURANT_NOT_FOUND'
-      );
+      await ensureDatabaseSeeded();
+      const retrySlug = restaurantSlug.toLowerCase();
+      const retryRestaurant = await prisma.restaurant.findFirst({
+        where: {
+          slug: retrySlug,
+          deletedAt: null,
+          isApproved: true,
+          isSuspended: false,
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+          cuisineType: true,
+          logo: true,
+          banner: true,
+          address: true,
+          city: true,
+          phone: true,
+          operatingHours: true,
+          isOpen: true,
+          hasDelivery: true,
+          minOrderValue: true,
+          deliveryRadius: true,
+          themeColor: true,
+          paymentQrCode: true,
+          paymentUpiId: true,
+          paymentPhone: true,
+          bankName: true,
+          bankAccountNumber: true,
+          bankIfsc: true,
+          bankAccountHolder: true,
+        },
+      });
+
+      if (!retryRestaurant) {
+        throw new AppError(
+          'Restaurant not found or not yet approved.',
+          404,
+          'RESTAURANT_NOT_FOUND'
+        );
+      }
+      
+      const categories = await prisma.menuCategory.findMany({
+        where: { restaurantId: retryRestaurant.id },
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          items: {
+            where: { deletedAt: null },
+            orderBy: { createdAt: 'asc' },
+            include: { variants: true, addOns: true },
+          },
+        },
+      });
+
+      const data = { restaurant: retryRestaurant, categories };
+      await cacheSet(cacheKey, data, 300);
+      res.json({ success: true, data });
+      return;
     }
 
     const categories = await prisma.menuCategory.findMany({

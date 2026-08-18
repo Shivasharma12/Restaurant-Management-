@@ -7,6 +7,8 @@ import { logger } from './utils/logger';
 import { connectRedis, isRedisReady } from './services/redis.service';
 import { prisma } from './lib/prisma';
 
+import { ensureDatabaseSeeded } from './utils/autoSeed';
+
 // Gracefully handle Redis disconnections / connection failures in production without crashing the process
 process.on('unhandledRejection', (reason: any) => {
   if (reason?.message === 'Connection is closed.' || reason?.code === 'ECONNREFUSED') {
@@ -38,6 +40,8 @@ async function bootstrap() {
         await prisma.$connect();
         dbConnected = true;
         logger.info('✅ Database connected');
+        // Auto-ensure default live credentials & demo restaurant exist
+        await ensureDatabaseSeeded();
       } catch (err) {
         retries--;
         if (retries === 0) {

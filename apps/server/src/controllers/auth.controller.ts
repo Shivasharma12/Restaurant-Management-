@@ -8,6 +8,7 @@ import {
   sendVerificationEmail,
   sendPasswordResetEmail,
 } from '../services/email.service';
+import { ensureDatabaseSeeded } from '../utils/autoSeed';
 import type { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
 // ── Token Helpers ─────────────────────────────────────────────
@@ -174,6 +175,14 @@ export async function login(req: Request, res: Response, next: NextFunction): Pr
     if (!user && !restaurantSlug) {
       user = await prisma.user.findFirst({
         where: { email: { endsWith: `:${normalizedEmail}` }, deletedAt: null },
+      });
+    }
+
+    // 4. Fallback: Auto-seed database if user account is not found and try lookup again
+    if (!user) {
+      await ensureDatabaseSeeded();
+      user = await prisma.user.findFirst({
+        where: { email: normalizedEmail, deletedAt: null },
       });
     }
 
