@@ -243,16 +243,39 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
 
   const [recentOrders, setRecentOrders] = useState<Array<{ orderId: string; restaurantSlug: string; createdAt: number }>>([]);
 
+  const [savedTable, setSavedTable] = useState<string | null>(null);
+  const [savedToken, setSavedToken] = useState<string | null>(null);
+
   useEffect(() => {
-    const token = searchParams?.token;
-    if (tableNumber && token) {
+    if (typeof window === 'undefined') return;
+    const tokenInQuery = searchParams?.token;
+
+    if (tableNumber && tokenInQuery) {
       localStorage.setItem(`table_num_${slug}`, tableNumber);
-      localStorage.setItem(`table_token_${slug}`, token);
-    } else if (!tableNumber) {
-      localStorage.removeItem(`table_num_${slug}`);
-      localStorage.removeItem(`table_token_${slug}`);
+      localStorage.setItem(`table_token_${slug}`, tokenInQuery);
+      setSavedTable(tableNumber);
+      setSavedToken(tokenInQuery);
+    } else if (tableNumber && !tokenInQuery) {
+      localStorage.setItem(`table_num_${slug}`, tableNumber);
+      setSavedTable(tableNumber);
+      if (searchParams?.table) {
+        localStorage.removeItem(`table_token_${slug}`);
+        setSavedToken(null);
+      } else {
+        setSavedToken(localStorage.getItem(`table_token_${slug}`));
+      }
+    } else {
+      // Recover from localStorage on page refresh/reload without query params
+      const storedNum = localStorage.getItem(`table_num_${slug}`);
+      const storedTok = localStorage.getItem(`table_token_${slug}`);
+      if (storedNum) setSavedTable(storedNum);
+      if (storedTok) setSavedToken(storedTok);
     }
   }, [tableNumber, searchParams, slug]);
+
+  const displayTableNumber = tableNumber || savedTable || manualTableNumber || undefined;
+  const displayTableToken = searchParams?.token || savedToken || undefined;
+
   
   useEffect(() => {
     const orders = localStorage.getItem('qr_restaurant_recent_orders');
@@ -809,10 +832,10 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
             {restaurant.cuisineType && (
               <p className="text-muted-foreground text-sm mt-1">{restaurant.cuisineType}</p>
             )}
-            {tableNumber && (
+            {displayTableNumber && (
               <div className="flex items-center gap-1.5 text-sm font-medium mt-1" style={{ color: themeColor }}>
                 <MapPin className="w-3.5 h-3.5" />
-                Table {tableNumber}
+                Table {displayTableNumber}
               </div>
             )}
           </div>
@@ -1208,7 +1231,7 @@ export function RestaurantMenuPage({ slug, tableNumber, searchParams }: Restaura
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         restaurantSlug={slug}
-        tableNumber={tableNumber}
+        tableNumber={displayTableNumber}
         themeColor={themeColor}
       />
 

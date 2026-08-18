@@ -99,9 +99,11 @@ export function CartDrawer({ open, onClose, restaurantSlug, tableNumber, themeCo
   const handleCheckout = () => {
     onClose();
     const params = new URLSearchParams();
-    if (tableNumber) params.set('table', tableNumber);
-    const token = localStorage.getItem(`table_token_${restaurantSlug}`);
-    if (token) params.set('token', token);
+    const activeTable = tableNumber || (typeof window !== 'undefined' ? localStorage.getItem(`table_num_${restaurantSlug}`) : null);
+    const activeToken = typeof window !== 'undefined' ? localStorage.getItem(`table_token_${restaurantSlug}`) : null;
+
+    if (activeTable) params.set('table', activeTable);
+    if (activeToken) params.set('token', activeToken);
     router.push(`/r/${restaurantSlug}/checkout?${params.toString()}`);
   };
 
