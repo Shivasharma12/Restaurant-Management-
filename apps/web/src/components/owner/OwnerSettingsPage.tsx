@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   Settings, UtensilsCrossed, LayoutDashboard, ShoppingBag, Tag, BarChart3, LogOut,
-  Menu, Save, Globe, Phone, MapPin, Clock, Palette, QrCode, Download, CreditCard, Banknote, Building2, Smartphone, Star
+  Menu, Save, Globe, Phone, MapPin, Clock, Palette, QrCode, Download, CreditCard, Banknote, Building2, Smartphone, Star, Printer
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth.store';
 import api from '@/lib/api';
@@ -16,6 +16,7 @@ import { WaiterBell } from '@/components/owner/WaiterBell';
 import { getImageUrl } from '@/lib/image';
 import { DAYS_OF_WEEK } from '@/utils/operatingHours';
 import QRCode from 'qrcode';
+import { downloadPlacardImage, printPlacard } from '@/utils/qrPlacard';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/owner/dashboard' },
@@ -832,28 +833,65 @@ export function OwnerSettingsPage() {
                         </Link>
 
                         {qrCodeDataUrl && (
-                          <a
-                            href={qrCodeDataUrl}
-                            download={`${data.slug}${tableNumber.trim() ? `-table-${tableNumber.trim()}` : ''}-qr.png`}
-                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white hover:bg-primary/95 rounded-xl text-sm font-semibold shadow-md transition-colors"
-                          >
-                            <Download className="w-4 h-4" /> Download QR Code
-                          </a>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                downloadPlacardImage({
+                                  restaurantName: data.name,
+                                  tableNumber,
+                                  qrCodeDataUrl,
+                                  themeColor: form.themeColor || '#E85D04',
+                                });
+                                toast.success('Table QR Placard downloaded successfully!');
+                              }}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-white hover:bg-primary/95 rounded-xl text-sm font-semibold shadow-md transition-colors"
+                            >
+                              <Download className="w-4 h-4" /> Download Table Placard (PNG)
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                printPlacard({
+                                  restaurantName: data.name,
+                                  tableNumber,
+                                  qrCodeDataUrl,
+                                  themeColor: form.themeColor || '#E85D04',
+                                });
+                              }}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-xl text-sm font-semibold border border-border transition-colors"
+                            >
+                              <Printer className="w-4 h-4" /> Print Placard
+                            </button>
+
+                            <a
+                              href={qrCodeDataUrl}
+                              download={`${data.slug}${tableNumber.trim() ? `-table-${tableNumber.trim()}` : ''}-qr.png`}
+                              className="inline-flex items-center justify-center gap-2 px-3.5 py-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl font-medium transition-colors"
+                            >
+                              <Download className="w-3.5 h-3.5" /> QR Code Only
+                            </a>
+                          </>
                         )}
                       </div>
                     </div>
 
                     {/* Placard Preview Panel */}
                     <div className="md:col-span-2 flex flex-col items-center justify-center">
-                      <div className="flex flex-col items-center p-5 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-[210px] shadow-2xl text-center text-white relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/5 via-transparent to-transparent pointer-events-none" />
+                      <div className="flex flex-col items-center p-5 bg-zinc-950 dark:bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-[230px] shadow-2xl text-center text-white relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-b from-orange-500/10 via-transparent to-transparent pointer-events-none" />
                         
-                        <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 mb-1">
-                          Scan & Order
+                        <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-400 mb-1">
+                          Welcome To
                         </span>
-                        <h4 className="text-sm font-bold text-orange-500 truncate max-w-[170px] mb-4">
+                        <h4 className="text-sm font-extrabold text-orange-500 truncate max-w-[190px] mb-2 uppercase">
                           {data.name}
                         </h4>
+
+                        <div className="bg-orange-500/20 text-orange-400 text-[10px] font-black uppercase px-2.5 py-1 rounded-md mb-3 border border-orange-500/30 tracking-wide">
+                          Scan this QR to order food
+                        </div>
 
                         <div className="bg-white p-3 rounded-xl shadow-inner mb-4 flex items-center justify-center">
                           {qrCodeDataUrl ? (
@@ -869,12 +907,12 @@ export function OwnerSettingsPage() {
                           )}
                         </div>
 
-                        <span className="text-xs font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20 px-3 py-1 rounded-full">
-                          {tableNumber.trim() ? `Table ${tableNumber.trim()}` : 'General Menu'}
+                        <span className="text-xs font-bold bg-orange-500 text-white px-4 py-1.5 rounded-full shadow-md">
+                          {tableNumber.trim() ? `TABLE NO. ${tableNumber.trim().toUpperCase()}` : 'GENERAL MENU QR'}
                         </span>
                       </div>
                       <span className="text-[11px] text-muted-foreground mt-3 text-center">
-                        Table placards preview mockup
+                        Printable table placard mockup
                       </span>
                     </div>
                   </div>
